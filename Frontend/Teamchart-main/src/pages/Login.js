@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import api from "../components/utility/BaseAPI";
+import { useNavigate, Link } from "react-router-dom";
 import "../style/Login.css";
 import loginImage from "../images/Login.gif";
 import "../style/animate.css";
@@ -12,10 +11,10 @@ import {
     showSuccess,
 } from "../components/utility/ToastNotofication";
 import { motion } from "framer-motion";
+import { loginUser } from "../services/authService";
 
 function Login({ onLogin }) {
     const [form, setForm] = useState({ username: "", password: "" });
-    const [error, setError] = useState("");
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
 
@@ -23,7 +22,7 @@ function Login({ onLogin }) {
         e.preventDefault();
         setIsLoading(true);
         try {
-            const res = await api.post("/auth/login", form);
+            const res = await loginUser(form);
             if (res.status === 200 && typeof res.data === "number") {
                 localStorage.setItem("memberId", res.data);
                 localStorage.setItem("username", form.username);
@@ -157,17 +156,6 @@ function Login({ onLogin }) {
                             </span>
                         </motion.button>
 
-                        {error && (
-                            <motion.p
-                                className="login-error"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ duration: 0.3 }}
-                            >
-                                {error}
-                            </motion.p>
-                        )}
-
                         <motion.p
                             className="signup-prompt"
                             initial={{ opacity: 0 }}
@@ -175,9 +163,9 @@ function Login({ onLogin }) {
                             transition={{ delay: 1, duration: 0.4 }}
                         >
                             Don't have an account?{" "}
-                            <a href="/" className="signup-link">
+                            <Link to="/" className="signup-link">
                                 Sign Up
-                            </a>
+                            </Link>
                         </motion.p>
                     </motion.form>
                 </motion.div>
