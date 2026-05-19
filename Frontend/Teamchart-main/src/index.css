@@ -293,3 +293,27 @@ code {
     color: #3b82f6;
     font-weight: 600;
 }
+
+/* Custom React DatePicker overrides to match Tailwind Blue-500 */
+.react-datepicker__time-container
+    .react-datepicker__time
+    .react-datepicker__time-box
+    ul.react-datepicker__time-list
+    li.react-datepicker__time-list-item--selected,
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+    background-color: #3b82f6 !important;
+    border-radius: 6px;
+}
+.react-datepicker {
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    font-family: "Poppins", sans-serif !important;
+    border-radius: 8px !important;
+}
+.react-datepicker__header {
+    background-color: #f9fafb !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    border-top-left-radius: 8px !important;
+    border-top-right-radius: 8px !important;
+}

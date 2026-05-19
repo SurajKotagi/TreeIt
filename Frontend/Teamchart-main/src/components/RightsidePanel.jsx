@@ -1,13 +1,28 @@
-import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
-import { LocalizationProvider } from "@mui/x-date-pickers";
-import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import TextField from "@mui/material/TextField";
-import { FormControl, InputLabel, Select, MenuItem } from "@mui/material";
-import { Button, Tooltip, Zoom } from "@mui/material";
-import { BiSolidDockLeft } from "react-icons/bi";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
-import { FaSave, FaDownload, FaPlus, FaRegLightbulb } from "react-icons/fa";
+import {
+    FaSave,
+    FaDownload,
+    FaPlus,
+    FaRegLightbulb,
+    FaChevronRight,
+} from "react-icons/fa";
+import CustomDropdown from "../components/ui/CustomDropdown";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { forwardRef } from "react";
+import { FaCalendarAlt } from "react-icons/fa";
+
+const CustomDateInput = forwardRef(({ value, onClick }, ref) => (
+    <div className="relative w-full cursor-pointer" onClick={onClick} ref={ref}>
+        <input
+            readOnly
+            value={value || "Select deadline..."}
+            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm text-gray-700 cursor-pointer"
+        />
+        <FaCalendarAlt className="absolute right-3 top-3 text-gray-400" />
+    </div>
+));
 
 const RightsidePanel = ({
     isSidebarOpen,
@@ -21,10 +36,8 @@ const RightsidePanel = ({
     saveGraph,
     handleDownload,
 }) => {
-    const [activateInput, setActivateInput] = useState(false);
     const [showTip, setShowTip] = useState(false);
 
-    // Tips for better workflow
     const tips = [
         "Assign clear deadlines for better tracking",
         "Add detailed descriptions to clarify tasks",
@@ -39,389 +52,163 @@ const RightsidePanel = ({
         <AnimatePresence>
             {isSidebarOpen && (
                 <motion.div
-                    initial={{ x: 100, opacity: 0 }}
+                    initial={{ x: 300, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
-                    exit={{ x: 100, opacity: 0 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    exit={{ x: 300, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 250, damping: 25 }}
                     className="fixed top-0 right-0 z-40 h-screen"
                 >
-                    <motion.div
-                        className="relative flex flex-col w-72 h-full px-5 py-6 bg-white shadow-xl border-l border-gray-200 rounded-l-xl"
-                        whileHover={{
-                            boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
-                        }}
-                    >
-                        {/* Close Button with tooltip */}
-                        <Tooltip
-                            title="Close Panel"
-                            placement="left"
-                            TransitionComponent={Zoom}
+                    <motion.div className="relative flex flex-col w-80 h-full px-6 py-8 bg-white shadow-2xl border-l border-gray-100 font-poppins">
+                        {/* Close Button */}
+                        <button
+                            onClick={closeSidebar}
+                            className="absolute top-4 left-[-1.5rem] bg-white border border-gray-200 p-2 rounded-full shadow-md text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
                         >
-                            <motion.button
-                                onClick={closeSidebar}
-                                className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition"
-                                whileHover={{
-                                    rotate: 180,
-                                    backgroundColor: "#EEF2FF",
-                                }}
-                                whileTap={{ scale: 0.9 }}
-                            >
-                                <BiSolidDockLeft className="w-5 h-5" />
-                            </motion.button>
-                        </Tooltip>
+                            <FaChevronRight className="w-4 h-4" />
+                        </button>
 
-                        {/* Title with animation */}
-                        <motion.h2
-                            className="text-2xl font-bold text-gray-800 mb-2"
-                            initial={{ y: -20 }}
-                            animate={{ y: 0 }}
-                            transition={{ type: "spring", stiffness: 300 }}
-                        >
-                            Node <span className="text-blue-500">Details</span>
-                        </motion.h2>
-                        <motion.p
-                            className="text-sm text-gray-400 mb-4"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.2 }}
-                        >
-                            Enter task and deadline info
-                        </motion.p>
-                        <motion.hr
-                            className="mb-4 border-gray-200"
-                            initial={{ width: "0%" }}
-                            animate={{ width: "100%" }}
-                            transition={{ duration: 0.5 }}
-                        />
+                        {/* Title */}
+                        <div className="mb-6">
+                            <h2 className="text-2xl font-bold text-gray-800">
+                                Node{" "}
+                                <span className="text-blue-500">Details</span>
+                            </h2>
+                            <p className="text-sm text-gray-500 mt-1">
+                                Configure your task parameters
+                            </p>
+                        </div>
 
-                        {/* Content Wrapper */}
-                        <div className="flex flex-col justify-between h-full">
-                            {/* Node Creation Form with animations */}
-                            <div className="space-y-4 flex-grow">
-                                {/* Task */}
-                                <motion.div
-                                    initial={{ x: -20, opacity: 0 }}
-                                    animate={{ x: 0, opacity: 1 }}
-                                    transition={{ delay: 0.1 }}
-                                    whileHover={{ scale: 1.02 }}
-                                    onFocus={() => setActivateInput(true)}
-                                >
-                                    <TextField
-                                        label="Task"
-                                        variant="outlined"
-                                        fullWidth
-                                        size="small"
-                                        placeholder="Enter task title"
-                                        value={newNodeInput.task}
-                                        onChange={(e) =>
-                                            setNewNodeInput((prev) => ({
-                                                ...prev,
-                                                task: e.target.value,
-                                            }))
-                                        }
-                                        sx={{
-                                            backgroundColor: "#f9f9f9",
-                                            borderRadius: 2,
-                                            "& .MuiOutlinedInput-root": {
-                                                "&:hover fieldset": {
-                                                    borderColor: "#3b82f6",
-                                                },
-                                                "&.Mui-focused fieldset": {
-                                                    borderColor: "#3b82f6",
-                                                    boxShadow:
-                                                        "0 0 0 4px rgba(59, 130, 246, 0.1)",
-                                                },
-                                            },
-                                        }}
-                                    />
-                                </motion.div>
-
-                                {/* Description */}
-                                <motion.div
-                                    initial={{ x: -20, opacity: 0 }}
-                                    animate={{ x: 0, opacity: 1 }}
-                                    transition={{ delay: 0.2 }}
-                                    whileHover={{ scale: 1.02 }}
-                                >
-                                    <TextField
-                                        label="Description"
-                                        variant="outlined"
-                                        multiline
-                                        minRows={2}
-                                        maxRows={5}
-                                        fullWidth
-                                        value={description}
-                                        placeholder="Optional notes..."
-                                        onChange={(e) =>
-                                            setDescription(e.target.value)
-                                        }
-                                        sx={{
-                                            backgroundColor: "#f9f9f9",
-                                            borderRadius: 2,
-                                            "& .MuiOutlinedInput-root": {
-                                                "&:hover fieldset": {
-                                                    borderColor: "#3b82f6",
-                                                },
-                                                "&.Mui-focused fieldset": {
-                                                    borderColor: "#3b82f6",
-                                                    boxShadow:
-                                                        "0 0 0 4px rgba(59, 130, 246, 0.1)",
-                                                },
-                                            },
-                                        }}
-                                    />
-                                </motion.div>
-
-                                {/* Assignee */}
-                                <motion.div
-                                    initial={{ x: -20, opacity: 0 }}
-                                    animate={{ x: 0, opacity: 1 }}
-                                    transition={{ delay: 0.3 }}
-                                    whileHover={{ scale: 1.02 }}
-                                >
-                                    <FormControl
-                                        fullWidth
-                                        size="small"
-                                        sx={{
-                                            "& .MuiOutlinedInput-root": {
-                                                borderRadius: 2,
-                                                backgroundColor: "#f9f9f9",
-                                                "&:hover fieldset": {
-                                                    borderColor: "#3b82f6",
-                                                },
-                                                "&.Mui-focused fieldset": {
-                                                    borderColor: "#3b82f6",
-                                                    boxShadow:
-                                                        "0 0 0 4px rgba(59, 130, 246, 0.1)",
-                                                },
-                                            },
-                                        }}
-                                    >
-                                        <InputLabel id="assignTo-label">
-                                            Assign To
-                                        </InputLabel>
-                                        <Select
-                                            labelId="assignTo-label"
-                                            value={newNodeInput.assignedTo}
-                                            label="Assign To"
-                                            onChange={(e) =>
-                                                setNewNodeInput((prev) => ({
-                                                    ...prev,
-                                                    assignedTo: e.target.value,
-                                                }))
-                                            }
-                                        >
-                                            {projectMembers.map((member) => (
-                                                <MenuItem
-                                                    key={member.memberId}
-                                                    value={member.username}
-                                                >
-                                                    {member.username}
-                                                </MenuItem>
-                                            ))}
-                                        </Select>
-                                    </FormControl>
-                                </motion.div>
-
-                                {/* Deadline */}
-                                <motion.div
-                                    initial={{ x: -20, opacity: 0 }}
-                                    animate={{ x: 0, opacity: 1 }}
-                                    transition={{ delay: 0.4 }}
-                                    whileHover={{ scale: 1.02 }}
-                                >
-                                    <LocalizationProvider
-                                        dateAdapter={AdapterDateFns}
-                                    >
-                                        <DateTimePicker
-                                            label="Deadline"
-                                            value={
-                                                new Date(newNodeInput.deadline)
-                                            }
-                                            minDateTime={new Date()}
-                                            onChange={(newValue) =>
-                                                setNewNodeInput((prev) => ({
-                                                    ...prev,
-                                                    deadline:
-                                                        newValue.toISOString(),
-                                                }))
-                                            }
-                                            renderInput={(params) => (
-                                                <TextField
-                                                    {...params}
-                                                    fullWidth
-                                                    size="small"
-                                                    sx={{
-                                                        backgroundColor:
-                                                            "#f9f9f9",
-                                                        borderRadius: 2,
-                                                        "& .MuiOutlinedInput-root":
-                                                            {
-                                                                "&:hover fieldset":
-                                                                    {
-                                                                        borderColor:
-                                                                            "#3b82f6",
-                                                                    },
-                                                                "&.Mui-focused fieldset":
-                                                                    {
-                                                                        borderColor:
-                                                                            "#3b82f6",
-                                                                        boxShadow:
-                                                                            "0 0 0 4px rgba(59, 130, 246, 0.1)",
-                                                                    },
-                                                            },
-                                                    }}
-                                                />
-                                            )}
-                                        />
-                                    </LocalizationProvider>
-                                </motion.div>
-
-                                {/* Pro tip section */}
-                                <AnimatePresence>
-                                    {showTip && (
-                                        <motion.div
-                                            className="mt-4 p-3 bg-blue-50 rounded-xl border border-blue-100"
-                                            initial={{ opacity: 0, height: 0 }}
-                                            animate={{
-                                                opacity: 1,
-                                                height: "auto",
-                                            }}
-                                            exit={{ opacity: 0, height: 0 }}
-                                            transition={{ duration: 0.3 }}
-                                        >
-                                            <div className="flex items-start gap-2">
-                                                <FaRegLightbulb className="text-blue-500 mt-0.5 flex-shrink-0" />
-                                                <p className="text-xs text-blue-700">
-                                                    {randomTip}
-                                                </p>
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
+                        {/* Form Inputs (Tailwind Styled) */}
+                        <div className="flex flex-col gap-4 flex-grow overflow-y-auto pr-2 custom-scrollbar">
+                            {/* Task Input */}
+                            <div className="flex flex-col">
+                                <label className="text-xs font-semibold text-gray-600 mb-1 ml-1 uppercase tracking-wide">
+                                    Task Name
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Design Database Schema"
+                                    value={newNodeInput.task}
+                                    onChange={(e) =>
+                                        setNewNodeInput({
+                                            ...newNodeInput,
+                                            task: e.target.value,
+                                        })
+                                    }
+                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm text-gray-700"
+                                />
                             </div>
 
-                            {/* Button section */}
-                            <div className="space-y-4 mt-auto pt-4">
-                                {/* Create Button */}
-                                <motion.div
-                                    initial={{ y: 20, opacity: 0 }}
-                                    animate={{ y: 0, opacity: 1 }}
-                                    transition={{ delay: 0.5 }}
-                                    whileHover={{ scale: 1.03 }}
-                                    whileTap={{ scale: 0.97 }}
-                                >
-                                    <Button
-                                        variant="contained"
-                                        fullWidth
-                                        startIcon={<FaPlus />}
-                                        sx={{
-                                            textTransform: "none",
-                                            bgcolor: "#3b82f6", // Tailwind blue-500
-                                            "&:hover": {
-                                                bgcolor: "#2563eb", // Tailwind blue-600
-                                            },
-                                            borderRadius: 2,
-                                            py: 1.2,
-                                            fontWeight: 600,
-                                            boxShadow:
-                                                "0 4px 6px rgba(59, 130, 246, 0.2)",
-                                        }}
-                                        onClick={handleCreateNode}
-                                        onMouseEnter={() => setShowTip(true)}
-                                        onMouseLeave={() => setShowTip(false)}
-                                    >
-                                        Create Node
-                                    </Button>
-                                </motion.div>
+                            {/* Description Input */}
+                            <div className="flex flex-col">
+                                <label className="text-xs font-semibold text-gray-600 mb-1 ml-1 uppercase tracking-wide">
+                                    Description
+                                </label>
+                                <textarea
+                                    rows="3"
+                                    placeholder="Optional notes or context..."
+                                    value={description}
+                                    onChange={(e) =>
+                                        setDescription(e.target.value)
+                                    }
+                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm text-gray-700 resize-none"
+                                />
+                            </div>
 
-                                {/* Save & Download Buttons */}
-                                <motion.div
-                                    className="flex gap-3"
-                                    initial={{ y: 20, opacity: 0 }}
-                                    animate={{ y: 0, opacity: 1 }}
-                                    transition={{ delay: 0.6 }}
-                                >
+                            {/* Assignee Select */}
+                            <div className="flex flex-col relative z-20">
+                                {" "}
+                                {/* z-20 ensures the menu floats above the calendar */}
+                                <label className="text-xs font-semibold text-gray-600 mb-1 ml-1 uppercase tracking-wide">
+                                    Assign To
+                                </label>
+                                <CustomDropdown
+                                    value={newNodeInput.assignedTo}
+                                    options={projectMembers.map(
+                                        (member) => member.username,
+                                    )}
+                                    onChange={(selectedValue) =>
+                                        setNewNodeInput({
+                                            ...newNodeInput,
+                                            assignedTo: selectedValue,
+                                        })
+                                    }
+                                />
+                            </div>
+
+                            {/* Native Date Picker */}
+                            <div className="flex flex-col relative z-10">
+                                <label className="text-xs font-semibold text-gray-600 mb-1 ml-1 uppercase tracking-wide">
+                                    Deadline
+                                </label>
+                                <DatePicker
+                                    selected={
+                                        newNodeInput.deadline
+                                            ? new Date(newNodeInput.deadline)
+                                            : null
+                                    }
+                                    onChange={(date) =>
+                                        setNewNodeInput({
+                                            ...newNodeInput,
+                                            deadline: date
+                                                ? date.toISOString()
+                                                : "",
+                                        })
+                                    }
+                                    customInput={<CustomDateInput />}
+                                    minDate={new Date()}
+                                    // KEEP THESE TWO (The actual fix for the blinking)
+                                    portalId="root"
+                                    popperPlacement="bottom-start"
+                                    // YOUR TIME SETTINGS
+                                    showTimeInput
+                                    timeInputLabel="Time:"
+                                    dateFormat="MMM d, yyyy h:mm aa"
+                                />
+                            </div>
+
+                            {/* Pro Tip */}
+                            <AnimatePresence>
+                                {showTip && (
                                     <motion.div
-                                        className="w-1/2"
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 10 }}
+                                        className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-100 flex items-start gap-2"
                                     >
-                                        <Tooltip
-                                            title="Save Flow Chart"
-                                            placement="top"
-                                            TransitionComponent={Zoom}
-                                        >
-                                            <Button
-                                                fullWidth
-                                                variant="outlined"
-                                                startIcon={<FaSave />}
-                                                sx={{
-                                                    textTransform: "none",
-                                                    borderRadius: 2,
-                                                    borderColor: "#3b82f6",
-                                                    color: "#3b82f6",
-                                                    "&:hover": {
-                                                        borderColor: "#2563eb",
-                                                        backgroundColor:
-                                                            "rgba(59, 130, 246, 0.1)",
-                                                    },
-                                                    boxShadow:
-                                                        "0 2px 4px rgba(0, 0, 0, 0.05)",
-                                                }}
-                                                onClick={saveGraph}
-                                            >
-                                                Save
-                                            </Button>
-                                        </Tooltip>
+                                        <FaRegLightbulb className="text-blue-500 mt-0.5 flex-shrink-0" />
+                                        <p className="text-xs text-blue-800 font-medium leading-relaxed">
+                                            {randomTip}
+                                        </p>
                                     </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
 
-                                    <motion.div
-                                        className="w-1/2"
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                    >
-                                        <Tooltip
-                                            title="Download as Image"
-                                            placement="top"
-                                            TransitionComponent={Zoom}
-                                        >
-                                            <Button
-                                                fullWidth
-                                                variant="outlined"
-                                                startIcon={<FaDownload />}
-                                                sx={{
-                                                    textTransform: "none",
-                                                    borderRadius: 2,
-                                                    borderColor: "#3b82f6",
-                                                    color: "#3b82f6",
-                                                    "&:hover": {
-                                                        borderColor: "#2563eb",
-                                                        backgroundColor:
-                                                            "rgba(59, 130, 246, 0.1)",
-                                                    },
-                                                    boxShadow:
-                                                        "0 2px 4px rgba(0, 0, 0, 0.05)",
-                                                }}
-                                                onClick={handleDownload}
-                                            >
-                                                Download
-                                            </Button>
-                                        </Tooltip>
-                                    </motion.div>
-                                </motion.div>
+                        {/* Action Buttons */}
+                        <div className="mt-6 pt-4 border-t border-gray-100 space-y-3">
+                            <button
+                                onClick={handleCreateNode}
+                                onMouseEnter={() => setShowTip(true)}
+                                onMouseLeave={() => setShowTip(false)}
+                                className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg font-semibold transition-colors shadow-lg shadow-blue-500/30"
+                            >
+                                <FaPlus /> Create Node
+                            </button>
 
-                                {/* Version indicator */}
-                                <motion.div
-                                    className="text-center mt-2"
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 0.7 }}
-                                    transition={{ delay: 0.8 }}
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={saveGraph}
+                                    className="flex-1 flex items-center justify-center gap-2 bg-white border border-blue-500 text-blue-500 hover:bg-blue-50 py-2.5 rounded-lg font-medium transition-colors"
                                 >
-                                    <span className="text-xs text-gray-400">
-                                        TeamManager Flow v1.2
-                                    </span>
-                                </motion.div>
+                                    <FaSave /> Save
+                                </button>
+                                <button
+                                    onClick={handleDownload}
+                                    className="flex-1 flex items-center justify-center gap-2 bg-white border border-blue-500 text-blue-500 hover:bg-blue-50 py-2.5 rounded-lg font-medium transition-colors"
+                                >
+                                    <FaDownload /> Export
+                                </button>
                             </div>
                         </div>
                     </motion.div>

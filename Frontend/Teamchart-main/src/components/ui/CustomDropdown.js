@@ -3,10 +3,9 @@ import React, { useState, useRef, useEffect } from "react";
 import { FaUserShield, FaChevronDown } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 
-function CustomDropdown({ value, onChange }) {
+function CustomDropdown({ value, onChange, options }) {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
-    const options = ["User", "Admin"];
 
     // This closes the dropdown if the user clicks anywhere else on the screen
     useEffect(() => {

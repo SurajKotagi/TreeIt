@@ -1,26 +1,24 @@
-import React, { useState } from "react";
-import api from "../components/utility/BaseAPI";
-import { Link } from "react-router-dom";
-import registerImage from "../images/Register.gif";
-import "../style/Register.css";
-import PageWrapper from "../components/ui/PageWrapper";
-import { useNavigate } from "react-router-dom";
-import CustomDropdown from "../components/ui/CustomDropdown";
-import {
-    showError,
-    showSuccess,
-    showInfo,
-} from "../components/utility/ToastNotofication";
 import { motion } from "framer-motion";
+import { useState } from "react";
 import {
+    FaArrowRight,
     FaEnvelope,
     FaIdCard,
-    FaUser,
     FaLock,
+    FaUser,
     FaUserCog,
-    FaArrowRight,
 } from "react-icons/fa";
-import { Select } from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import CustomDropdown from "../components/ui/CustomDropdown";
+import PageWrapper from "../components/ui/PageWrapper";
+import api from "../components/utility/BaseAPI";
+import {
+    showError,
+    showInfo,
+    showSuccess,
+} from "../components/utility/ToastNotofication";
+import registerImage from "../images/Register.gif";
+import "../style/Register.css";
 
 function Register() {
     const [form, setForm] = useState({
@@ -228,6 +226,7 @@ function Register() {
                             <FaUserCog className="input-icon" />
                             <CustomDropdown
                                 value={form.role}
+                                options={["User", "Admin"]}
                                 onChange={(selectedRole) =>
                                     setForm({ ...form, role: selectedRole })
                                 }
