@@ -149,6 +149,20 @@ function LoginForm({ onLogin }) {
                         </span>
                     </motion.button>
 
+                    <motion.div
+                        className="server-note"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 1.2, duration: 0.5 }}
+                    >
+                        <p>
+                            <strong>Note:</strong> This backend is hosted on a
+                            free serverless tier. The very first login request
+                            may take up to 50 seconds to wake the server. Thank
+                            you for your patience!
+                        </p>
+                    </motion.div>
+
                     <motion.p
                         className="signup-prompt"
                         initial={{ opacity: 0 }}
