@@ -1,8 +1,6 @@
 package arc.teamManager.services;
 
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +53,8 @@ public class TodoService {
 
         boolean allDone = todos.stream().allMatch(Todo::isCompleted);
         if (!allDone) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "All todos must be completed before marking the node as completed.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "All todos must be completed before marking the node as completed.");
         }
 
         node.setStatus("completed");
