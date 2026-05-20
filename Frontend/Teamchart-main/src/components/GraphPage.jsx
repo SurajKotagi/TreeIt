@@ -38,6 +38,7 @@ import { showError, showSuccess } from "./utility/ToastNotofication";
 
 import "reactflow/dist/style.css";
 import "react-quill/dist/quill.snow.css";
+import { FaBars } from "react-icons/fa";
 
 const imageWidth = 1024;
 const imageHeight = 768;
@@ -61,7 +62,7 @@ const Content = ({ selectedProjectId }) => {
     const [reactFlowInstance, setReactFlowInstance] = useState(null);
     const [id, setId] = useState(0);
     const [projectMembers, setProjectMembers] = useState([]);
-    const { isSidebarOpen, closeSidebar } = useGlobalContext();
+    const { isSidebarOpen, closeSidebar, openSidebar } = useGlobalContext();
     const [selectedNode, setSelectedNode] = useState(null);
     const [newNodeInput, setNewNodeInput] = useState({
         id: "",
@@ -91,7 +92,7 @@ const Content = ({ selectedProjectId }) => {
             if (!selectedProjectId) return;
             try {
                 const res = await api.get(
-                    `/projects/${selectedProjectId}/members`
+                    `/projects/${selectedProjectId}/members`,
                 );
                 setProjectMembers(res.data);
             } catch (err) {
@@ -167,7 +168,7 @@ const Content = ({ selectedProjectId }) => {
                     pane.height - event.clientY + 70,
             });
         },
-        [setMenu, isSidebarOpen]
+        [setMenu, isSidebarOpen],
     );
 
     const onEdgeUpdate = useCallback(
@@ -175,7 +176,7 @@ const Content = ({ selectedProjectId }) => {
             edgeUpdateSuccessful.current = true;
             setEdges((els) => updateEdge(oldEdge, newConnection, els));
         },
-        [setEdges]
+        [setEdges],
     );
 
     const onEdgeUpdateStart = useCallback(() => {
@@ -189,13 +190,13 @@ const Content = ({ selectedProjectId }) => {
             }
             edgeUpdateSuccessful.current = true;
         },
-        [setEdges]
+        [setEdges],
     );
 
     const onConnect = useCallback(
         (params) =>
             setEdges((eds) => addEdge({ ...params, animated: true }, eds)),
-        [setEdges]
+        [setEdges],
     );
 
     const onDragOver = useCallback((event) => {
@@ -228,7 +229,7 @@ const Content = ({ selectedProjectId }) => {
 
             setNodes((nds) => nds.concat(newNode));
         },
-        [reactFlowInstance, getId, setNodes]
+        [reactFlowInstance, getId, setNodes],
     );
 
     const handleDownload = () => {
@@ -238,7 +239,7 @@ const Content = ({ selectedProjectId }) => {
             imageWidth,
             imageHeight,
             0.5,
-            2
+            2,
         );
 
         toPng(document.querySelector(".react-flow__viewport"), {
@@ -269,7 +270,7 @@ const Content = ({ selectedProjectId }) => {
         }
         if (new Date(newNodeInput.deadline) < new Date()) {
             showError(
-                "Your deadline has passed before creation, please select new deadline"
+                "Your deadline has passed before creation, please select new deadline",
             );
             return;
         }
@@ -300,8 +301,8 @@ const Content = ({ selectedProjectId }) => {
                                       ...n,
                                       data: { ...n.data, status: newStatus },
                                   }
-                                : n
-                        )
+                                : n,
+                        ),
                     );
                 },
             },
@@ -368,7 +369,7 @@ const Content = ({ selectedProjectId }) => {
     // Filter nodes by project ID
     const filteredNodes = useMemo(() => {
         return nodes.filter(
-            (node) => `${node.data.projectId}` === `${selectedProjectId}`
+            (node) => `${node.data.projectId}` === `${selectedProjectId}`,
         );
     }, [nodes, selectedProjectId]);
 
@@ -389,8 +390,8 @@ const Content = ({ selectedProjectId }) => {
                                           status: newStatus,
                                       },
                                   }
-                                : n
-                        )
+                                : n,
+                        ),
                     );
                 },
             },
@@ -438,15 +439,15 @@ const Content = ({ selectedProjectId }) => {
                               ...node,
                               data: { ...node.data, status: "completed" },
                           }
-                        : node
-                )
+                        : node,
+                ),
             );
             showSuccess("Node marked as completed successfully!");
         } catch (error) {
             if (error.response && error.response.data) {
                 showError(
                     error.response.data.message ||
-                        "All todos must be completed before marking as completed."
+                        "All todos must be completed before marking as completed.",
                 );
             } else {
                 showError("Something went wrong. Please try again.");
@@ -480,7 +481,7 @@ const Content = ({ selectedProjectId }) => {
 
         if (node.data.assignedTo !== currentUsername) {
             showError(
-                "You are not assigned to this node and cannot update its status."
+                "You are not assigned to this node and cannot update its status.",
             );
             return;
         }
@@ -513,8 +514,8 @@ const Content = ({ selectedProjectId }) => {
                                       : "",
                           },
                       }
-                    : n
-            )
+                    : n,
+            ),
         );
     };
 
@@ -537,8 +538,8 @@ const Content = ({ selectedProjectId }) => {
                                   stuckReason: reason,
                               },
                           }
-                        : n
-                )
+                        : n,
+                ),
             );
             showSuccess("Updated stuck reason");
         } catch (err) {
@@ -547,25 +548,23 @@ const Content = ({ selectedProjectId }) => {
         }
     };
 
-    // Edge styling
+    // 1. Modernized Edge Styling
     const edgeStyle = {
-        type: "bezier",
-        animated: true,
+        type: "smoothstep", // Changes from loose curves to sleek rounded corners
+        animated: true, // The animation looks great on smoothstep!
         style: {
-            stroke: "#64748b",
-            strokeWidth: 2,
-            filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))",
-            strokeDasharray: "5 5",
+            stroke: "#94a3b8", // Soft slate color
+            strokeWidth: 2.5, // Slightly thicker for a premium feel
         },
         markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: "#64748b",
-            width: 20,
-            height: 20,
+            color: "#94a3b8",
+            width: 15, // Smaller, sharper arrows
+            height: 15,
         },
     };
 
-    // Custom connection line
+    // 2. Modernized Connection Line (When you drag to connect nodes)
     const customEdgeLine = ({ fromX, fromY, toX, toY }) => {
         const [edgePath] = getBezierPath({
             sourceX: fromX,
@@ -577,12 +576,12 @@ const Content = ({ selectedProjectId }) => {
         return (
             <path
                 d={edgePath}
-                stroke="#3b82f6"
-                strokeWidth={2}
+                stroke="#3b82f6" // Tailwind Blue 500
+                strokeWidth={3}
                 fill="none"
                 style={{
-                    strokeDasharray: "5 5",
-                    filter: "drop-shadow(0 1px 2px rgba(59, 130, 246, 0.3))",
+                    // Removed the dashed array!
+                    filter: "drop-shadow(0 2px 6px rgba(59, 130, 246, 0.4))", // Added a subtle blue glow
                 }}
             />
         );
@@ -604,8 +603,8 @@ const Content = ({ selectedProjectId }) => {
                                   deadline: newDeadline,
                               },
                           }
-                        : n
-                )
+                        : n,
+                ),
             );
         } catch (err) {
             console.error("Error updating deadline:", err);
@@ -650,24 +649,66 @@ const Content = ({ selectedProjectId }) => {
                 onClick={handleDownload}
             />
 
+            {/* ✨ UNIFIED TOP-LEFT CONTROL PILL ✨ */}
             <Panel
                 position="top-left"
-                className="bg-white bg-opacity-80 p-2 rounded-lg shadow-md"
+                className="mt-5 ml-5 bg-white/80 backdrop-blur-md p-1.5 pr-5 rounded-xl shadow-sm border border-gray-200 flex items-center gap-3"
             >
-                <div className="text-sm font-semibold text-gray-700">
-                    {selectedProjectId
-                        ? `Project Flow - ID: ${selectedProjectId}`
-                        : "No Project Selected"}
+                {/* 1. Integrated Left Sidebar Toggle */}
+                <motion.button
+                    onClick={() =>
+                        isSidebarOpen ? closeSidebar() : openSidebar()
+                    }
+                    className="w-9 h-9 flex items-center justify-center bg-white border border-gray-100 hover:bg-blue-50 text-gray-500 hover:text-blue-600 hover:border-blue-200 rounded-lg shadow-sm transition-all"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    title="Toggle Projects Sidebar"
+                >
+                    <FaBars size={14} />
+                </motion.button>
+
+                {/* 2. Vertical Divider */}
+                <div className="w-[1px] h-5 bg-gray-200"></div>
+
+                {/* 3. Project Status Breadcrumb */}
+                <div className="flex items-center gap-2.5">
+                    <div className="relative flex h-2.5 w-2.5">
+                        {selectedProjectId && (
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                        )}
+                        <span
+                            className={`relative inline-flex rounded-full h-2.5 w-2.5 ${selectedProjectId ? "bg-blue-500" : "bg-gray-400"}`}
+                        ></span>
+                    </div>
+
+                    <div className="text-sm font-semibold text-gray-700 uppercase tracking-wider mt-0.5">
+                        {selectedProjectId
+                            ? `Project / ${selectedProjectId}`
+                            : "No Project Selected"}
+                    </div>
                 </div>
             </Panel>
 
-            <Controls className="bg-white bg-opacity-90 rounded-lg shadow-lg" />
+            {/* ✨ MOVED TO BOTTOM-LEFT SAFE ZONE ✨ */}
+            <Controls
+                position="bottom-left"
+                className="bg-white/90 backdrop-blur-sm rounded-lg shadow-sm border border-gray-200 ml-5 mb-5"
+            />
 
             <MiniMap
+                position="bottom-right"
                 zoomable
                 pannable
-                className="rounded-lg shadow-lg overflow-hidden"
+                className="rounded-xl shadow-md overflow-hidden border border-gray-200 mb-5"
+                style={{
+                    transition: "transform 0.3s ease-in-out",
+                    // Changed from -340px to -320px to match the w-80 sidebar perfectly!
+                    transform: isSidebarOpen
+                        ? "translateX(-45%)"
+                        : "translateX(0px)",
+                }}
                 nodeBorderRadius={8}
+                // ... rest of your code
                 nodeColor={(node) => {
                     const statusColors = {
                         completed: "#10b981",
@@ -675,16 +716,16 @@ const Content = ({ selectedProjectId }) => {
                         stuck: "#facc15",
                         unpicked: "#94a3b8",
                     };
-                    return statusColors[node.data?.status] || "#ffffff";
+                    return statusColors[node.data?.status] || "#cbd5e1";
                 }}
             />
 
             <Background
-                variant="lines"
-                gap={30}
-                size={1}
+                variant="dots"
+                gap={24}
+                size={2}
                 color="#cbd5e1"
-                style={{ backgroundColor: "#f8fafc" }}
+                style={{ backgroundColor: "#fafafa" }}
             />
 
             {/* Node properties on right click */}
@@ -697,8 +738,8 @@ const Content = ({ selectedProjectId }) => {
                 description={nodeDescription}
                 todos={todos}
                 isCompleted={isCompleted}
-                assignedTo={selectedNode?.data.assignedTo}
-                creatorId={selectedNode?.data.creatorId}
+                assignedTo={selectedNode?.data?.assignedTo}
+                creatorId={selectedNode?.data?.creatorId}
                 onToggleTodo={onToggleTodo}
                 onMarkCompleted={onMarkCompleted}
                 onAddTodo={onAddTodo}
