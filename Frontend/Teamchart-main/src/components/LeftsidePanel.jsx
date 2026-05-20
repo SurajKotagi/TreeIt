@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from "react";
 import api from "./utility/BaseAPI";
-import { Button } from "@mui/material";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    FaFolderOpen,
-    FaFolder,
     FaPlus,
     FaUserPlus,
     FaTrashAlt,
     FaSearch,
     FaTimes,
+    FaLeaf,
+    FaCog,
+    FaQuestionCircle,
 } from "react-icons/fa";
 
 const LeftSidebar = ({
@@ -48,7 +48,7 @@ const LeftSidebar = ({
     }, [modalProject]);
 
     const availableCandidates = allMembers.filter(
-        (member) => !modalProject?.members?.some((m) => m._id === member._id)
+        (member) => !modalProject?.members?.some((m) => m._id === member._id),
     );
 
     // Toggle menu visibility
@@ -68,7 +68,7 @@ const LeftSidebar = ({
         // compute candidates not in project
         const currentIds = res.data?.map((m) => m.memberId) || [];
         const candidates = allMembers.filter(
-            (m) => !currentIds.includes(m.memberId)
+            (m) => !currentIds.includes(m.memberId),
         );
         setCandidateMembers(candidates);
         setSelectedCandidates([]);
@@ -124,6 +124,15 @@ const LeftSidebar = ({
             alert("Error deleting project");
         }
     };
+    // Array of soft colors for the project dots
+    const dotColors = [
+        "bg-red-400",
+        "bg-amber-400",
+        "bg-green-400",
+        "bg-purple-400",
+        "bg-blue-400",
+        "bg-pink-400",
+    ];
 
     return (
         <>
@@ -131,208 +140,175 @@ const LeftSidebar = ({
                 initial={{ x: -100, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ duration: 0.5, ease: "easeOut" }}
-                className="w-64 h-screen bg-gradient-to-b from-gray-50 to-gray-100 border-r border-gray-200 px-4 py-6 fixed top-0 left-0 shadow-sm"
+                className="w-64 h-screen bg-[#fafafa] border-r border-gray-200 flex flex-col fixed top-0 left-0 font-poppins"
             >
-                {/* User Profile */}
-                <motion.div
-                    className="flex items-center justify-between mb-6"
-                    whileHover={{ scale: 1.02 }}
-                >
-                    <div
-                        className="flex items-center gap-3 cursor-pointer group"
-                        onClick={() => setIsProfileModalOpen(true)}
-                    >
-                        <motion.img
-                            src={avatar}
-                            alt="User Avatar"
-                            className="w-10 h-10 rounded-full border-2 border-blue-500 shadow-md group-hover:shadow-blue-200"
-                            whileHover={{ scale: 1.1 }}
-                            transition={{
-                                type: "spring",
-                                stiffness: 400,
-                                damping: 10,
-                            }}
-                        />
-                        <span className="text-lg font-semibold text-gray-800 group-hover:text-blue-600 transition-colors duration-200">
-                            {username}
-                        </span>
+                {/* 1. App Logo Header */}
+                <div className="flex items-center gap-2 px-5 py-6">
+                    <div className="bg-blue-500 p-1.5 rounded-lg text-white">
+                        <FaLeaf className="w-4 h-4" />
                     </div>
-                </motion.div>
+                    <h1 className="text-xl font-bold tracking-tight text-gray-800">
+                        Tree{" "}
+                        <span className="text-blue-600 font-black">It</span>
+                    </h1>
+                </div>
 
-                {/* Folder toggle */}
-                <motion.div
-                    className="flex justify-between items-center mb-4 cursor-pointer bg-white p-2 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300"
-                    whileHover={{ y: -2 }}
-                    onClick={() => setIsProjectOpen((prev) => !prev)}
-                >
-                    <p className="text-md font-semibold text-gray-700 hover:text-blue-600 transition-colors flex items-center gap-2">
-                        {isProjectOpen ? (
-                            <>
-                                <FaFolderOpen className="text-blue-500" />{" "}
-                                Projects
-                            </>
-                        ) : (
-                            <>
-                                <FaFolder className="text-blue-500" /> Open
-                                Projects
-                            </>
-                        )}
-                    </p>
-                    <motion.span
-                        animate={{ rotate: isProjectOpen ? 0 : -90 }}
-                        transition={{ duration: 0.3 }}
+                {/* 2. User Profile Card */}
+                <div className="px-4 mb-6">
+                    <motion.div
+                        className="flex items-center gap-3 bg-white border border-gray-100 shadow-sm p-2.5 rounded-xl cursor-pointer hover:border-blue-200 transition-colors"
+                        onClick={() => setIsProfileModalOpen(true)}
+                        whileHover={{ y: -1 }}
                     >
-                        ▼
-                    </motion.span>
-                </motion.div>
+                        <img
+                            src={avatar}
+                            alt="Avatar"
+                            className="w-9 h-9 rounded-full shadow-sm"
+                        />
+                        <div className="flex flex-col">
+                            <span className="text-sm font-bold text-gray-800 leading-tight">
+                                {username}
+                            </span>
+                            <span className="text-xs text-gray-400 font-medium">
+                                Project Lead
+                            </span>
+                        </div>
+                    </motion.div>
+                </div>
 
-                {/* Projects list with transition */}
-                <AnimatePresence>
-                    {isProjectOpen && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className="overflow-y-auto pr-1 max-h-[calc(100vh-220px)] custom-scrollbar"
-                            style={{
-                                scrollbarWidth: "thin",
-                                scrollbarColor: "#CBD5E0 #F1F5F9",
-                            }}
-                        >
-                            {projects.map((project) => {
-                                const isSelected =
-                                    project.projectId === selectedProjectId;
-                                return (
-                                    <motion.div
-                                        key={project.projectId}
-                                        className={`mb-3 rounded-2xl shadow-sm border ${
+                {/* 3. Projects Section */}
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <div className="px-5 mb-2">
+                        <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                            Projects
+                        </h2>
+                    </div>
+
+                    {/* Scrollable Project List */}
+                    <div className="flex-grow overflow-y-auto custom-scrollbar px-2">
+                        {projects.map((project, index) => {
+                            const isSelected =
+                                project.projectId === selectedProjectId;
+                            const dotColor =
+                                dotColors[index % dotColors.length];
+
+                            return (
+                                <motion.div
+                                    key={project.projectId}
+                                    className="mb-0.5"
+                                >
+                                    <div
+                                        // CHANGED: items-center is now items-start so the 3-dots stay near the top
+                                        className={`flex items-start justify-between px-3 py-2 cursor-pointer rounded-r-lg transition-all duration-200 group ${
                                             isSelected
-                                                ? "bg-blue-50 border-blue-300"
-                                                : "bg-white border-gray-200"
-                                        } overflow-hidden`}
-                                        whileHover={{
-                                            y: -2,
-                                            boxShadow:
-                                                "0 4px 6px rgba(0, 0, 0, 0.1)",
-                                        }}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ duration: 0.2 }}
+                                                ? "bg-blue-50/60 border-l-4 border-blue-600"
+                                                : "border-l-4 border-transparent hover:bg-gray-100"
+                                        }`}
+                                        onClick={() =>
+                                            onSelectProjectClick(
+                                                project.projectId,
+                                            )
+                                        }
                                     >
-                                        <div className="flex justify-between items-center px-4 py-3 hover:bg-blue-100 transition-colors duration-200">
-                                            <button
-                                                onClick={() =>
-                                                    onSelectProjectClick(
-                                                        project.projectId
-                                                    )
-                                                }
-                                                className="text-left w-full font-semibold text-gray-800 truncate"
+                                        {/* CHANGED: items-center is now items-start, added flex-1 and pr-2 */}
+                                        <div className="flex items-start gap-3 flex-1 pr-2">
+                                            {/* CHANGED: Added mt-1.5 to push the dot down slightly to align with the first line of text */}
+                                            <span
+                                                className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${dotColor}`}
+                                            ></span>
+
+                                            {/* CHANGED: Removed 'truncate', added 'leading-snug break-words' */}
+                                            <span
+                                                className={`text-sm leading-snug break-words ${isSelected ? "font-semibold text-blue-700" : "font-medium text-gray-600 group-hover:text-gray-800"}`}
                                             >
                                                 {project.name}
-                                            </button>
-                                            <motion.button
-                                                className="ml-2 w-8 h-8 flex items-center justify-center hover:bg-blue-200 text-gray-700 rounded-full transition-colors"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    toggleMenu(
-                                                        project.projectId
-                                                    );
-                                                }}
-                                                whileHover={{ scale: 1.1 }}
-                                                whileTap={{ scale: 0.95 }}
-                                            >
-                                                ⋮
-                                            </motion.button>
+                                            </span>
                                         </div>
 
-                                        <AnimatePresence>
-                                            {menuOpenId ===
-                                                project.projectId && (
-                                                <motion.div
-                                                    initial={{
-                                                        height: 0,
-                                                        opacity: 0,
-                                                    }}
-                                                    animate={{
-                                                        height: "auto",
-                                                        opacity: 1,
-                                                    }}
-                                                    exit={{
-                                                        height: 0,
-                                                        opacity: 0,
-                                                    }}
-                                                    transition={{
-                                                        duration: 0.2,
-                                                    }}
-                                                    className="px-4 pb-3 text-sm text-gray-700 space-y-2 overflow-hidden"
-                                                >
-                                                    <motion.button
-                                                        className="w-full text-left py-2 px-3 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2"
-                                                        onClick={() =>
-                                                            openAddMemberModal(
-                                                                project
-                                                            )
-                                                        }
-                                                        whileHover={{ x: 2 }}
-                                                        whileTap={{
-                                                            scale: 0.98,
-                                                        }}
-                                                    >
-                                                        <FaUserPlus className="text-blue-500" />{" "}
-                                                        Add Members
-                                                    </motion.button>
-                                                    <motion.button
-                                                        className="w-full text-left py-2 px-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
-                                                        onClick={() =>
-                                                            handleDeleteProject(
-                                                                project.projectId
-                                                            )
-                                                        }
-                                                        whileHover={{ x: 2 }}
-                                                        whileTap={{
-                                                            scale: 0.98,
-                                                        }}
-                                                    >
-                                                        <FaTrashAlt className="text-red-500" />{" "}
-                                                        Delete Project
-                                                    </motion.button>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </motion.div>
-                                );
-                            })}
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                                        {/* Subtle 3-Dots Menu */}
+                                        <button
+                                            className={`shrink-0 w-6 h-6 flex items-center justify-center rounded-md transition-colors ${
+                                                isSelected
+                                                    ? "text-blue-500 hover:bg-blue-100"
+                                                    : "text-gray-400 hover:bg-gray-200 opacity-0 group-hover:opacity-100"
+                                            }`}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                toggleMenu(project.projectId);
+                                            }}
+                                        >
+                                            ⋮
+                                        </button>
+                                    </div>
 
-                {/* Create Project Button */}
-                <motion.div
-                    className="mt-4"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                >
-                    <Button
-                        variant="contained"
-                        fullWidth
-                        startIcon={<FaPlus />}
-                        sx={{
-                            textTransform: "none",
-                            bgcolor: "#3b82f6",
-                            "&:hover": {
-                                bgcolor: "#2563eb",
-                            },
-                            borderRadius: 2,
-                            py: 1.2,
-                            fontWeight: 600,
-                            boxShadow: "0 4px 6px rgba(59, 130, 246, 0.3)",
-                        }}
-                        onClick={onAddProject}
-                    >
-                        Create Project
-                    </Button>
-                </motion.div>
+                                    {/* Project Actions Dropdown */}
+                                    <AnimatePresence>
+                                        {menuOpenId === project.projectId && (
+                                            <motion.div
+                                                initial={{
+                                                    height: 0,
+                                                    opacity: 0,
+                                                }}
+                                                animate={{
+                                                    height: "auto",
+                                                    opacity: 1,
+                                                }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                className="ml-6 mr-2 mt-1 mb-2 space-y-1 overflow-hidden"
+                                            >
+                                                <button
+                                                    className="w-full text-left py-1.5 px-3 text-xs font-medium text-gray-600 rounded-md hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-2"
+                                                    onClick={() =>
+                                                        openAddMemberModal(
+                                                            project,
+                                                        )
+                                                    }
+                                                >
+                                                    <FaUserPlus className="text-blue-500" />{" "}
+                                                    Add Members
+                                                </button>
+                                                <button
+                                                    className="w-full text-left py-1.5 px-3 text-xs font-medium text-red-500 rounded-md hover:bg-red-50 transition-colors flex items-center gap-2"
+                                                    onClick={() =>
+                                                        handleDeleteProject(
+                                                            project.projectId,
+                                                        )
+                                                    }
+                                                >
+                                                    <FaTrashAlt className="text-red-400" />{" "}
+                                                    Delete Project
+                                                </button>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </motion.div>
+                            );
+                        })}
+
+                        {/* 4. Subtle Create Project Button */}
+                        <div className="px-2 mt-2">
+                            <button
+                                onClick={onAddProject}
+                                className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-500 hover:text-blue-600 border border-transparent hover:border-gray-200 hover:bg-white hover:shadow-sm rounded-lg transition-all duration-200"
+                            >
+                                <FaPlus className="text-xs opacity-70" />
+                                Create Project
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 5. Bottom Footer (Settings & Help) */}
+                <div className="p-4 mt-auto border-t border-gray-200/60 bg-[#fafafa]">
+                    <div className="flex gap-2">
+                        <button className="flex-1 flex items-center justify-center gap-2 py-2 text-xs font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200/50">
+                            <FaCog /> Settings
+                        </button>
+                        <button className="flex-1 flex items-center justify-center gap-2 py-2 text-xs font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200/50">
+                            <FaQuestionCircle /> Help
+                        </button>
+                    </div>
+                </div>
             </motion.div>
 
             {/* Add Members Modal */}
@@ -397,11 +373,13 @@ const LeftSidebar = ({
                                             m.username
                                                 .toLowerCase()
                                                 .includes(
-                                                    searchQuery.toLowerCase()
-                                                )
+                                                    searchQuery.toLowerCase(),
+                                                ),
                                         )
                                         .sort((a, b) =>
-                                            a.username.localeCompare(b.username)
+                                            a.username.localeCompare(
+                                                b.username,
+                                            ),
                                         )
                                         .map((m) => (
                                             <motion.label
@@ -427,8 +405,8 @@ const LeftSidebar = ({
                                                                     : prev.filter(
                                                                           (x) =>
                                                                               x !==
-                                                                              id
-                                                                      )
+                                                                              id,
+                                                                      ),
                                                         );
                                                     }}
                                                 />
