@@ -11,6 +11,7 @@ import {
     FaCog,
     FaQuestionCircle,
 } from "react-icons/fa";
+import Avatar from "boring-avatars";
 
 const LeftSidebar = ({
     projects = [],
@@ -20,8 +21,7 @@ const LeftSidebar = ({
     setSelectedProjectId,
 }) => {
     const username = localStorage.getItem("username") || "User";
-    const defaultAvatar = `https://api.dicebear.com/7.x/initials/svg?seed=${username}&backgroundType=gradientLinear&fontFamily=Trebuchet%20MS&fontSize=41`;
-
+    const defaultAvatar = `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${username}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf&eyes=closed&mouth=lilSmile`;
     const [isProjectOpen, setIsProjectOpen] = useState(true);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [avatar, setAvatar] = useState(defaultAvatar);
@@ -134,6 +134,12 @@ const LeftSidebar = ({
         "bg-pink-400",
     ];
 
+    // This picks a random color from your brand palette ONCE when the sidebar loads
+    const [avatarColor] = useState(() => {
+        const colors = ["#f77272", "#fabd23", "#c083fc", "#49de80"];
+        return colors[Math.floor(Math.random() * colors.length)];
+    });
+
     return (
         <>
             <motion.div
@@ -143,36 +149,112 @@ const LeftSidebar = ({
                 className="w-64 h-screen bg-[#fafafa] border-r border-gray-200 flex flex-col fixed top-0 left-0 font-poppins"
             >
                 {/* 1. App Logo Header */}
-                <div className="flex items-center gap-2 px-5 py-6">
-                    <div className="bg-blue-500 p-1.5 rounded-lg text-white">
-                        <FaLeaf className="w-4 h-4" />
+                <div className="flex items-center gap-3 px-5 py-6">
+                    {/* New Brand Logo (Concept D) */}
+                    <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                        <svg
+                            viewBox="0 0 200 200"
+                            className="w-full h-full drop-shadow-sm"
+                            xmlns="http://www.w3.org/2000/svg"
+                        >
+                            <g strokeLinecap="round" strokeWidth="12">
+                                <line
+                                    x1="100"
+                                    y1="100"
+                                    x2="100"
+                                    y2="45"
+                                    stroke="#c083fc"
+                                />
+                                <line
+                                    x1="100"
+                                    y1="100"
+                                    x2="139"
+                                    y2="61"
+                                    stroke="#49de80"
+                                />
+                                <line
+                                    x1="100"
+                                    y1="100"
+                                    x2="155"
+                                    y2="100"
+                                    stroke="#49de80"
+                                />
+                                <line
+                                    x1="100"
+                                    y1="100"
+                                    x2="100"
+                                    y2="155"
+                                    stroke="#c083fc"
+                                />
+                                <line
+                                    x1="100"
+                                    y1="100"
+                                    x2="61"
+                                    y2="139"
+                                    stroke="#f77272"
+                                />
+                                <line
+                                    x1="100"
+                                    y1="100"
+                                    x2="45"
+                                    y2="100"
+                                    stroke="#f77272"
+                                />
+                                <line
+                                    x1="100"
+                                    y1="100"
+                                    x2="61"
+                                    y2="61"
+                                    stroke="#fabd23"
+                                />
+                            </g>
+                            <circle cx="100" cy="45" r="14" fill="#c083fc" />
+                            <circle cx="139" cy="61" r="14" fill="#49de80" />
+                            <circle cx="155" cy="100" r="14" fill="#49de80" />
+                            <circle cx="100" cy="155" r="14" fill="#c083fc" />
+                            <circle cx="61" cy="139" r="14" fill="#f77272" />
+                            <circle cx="45" cy="100" r="14" fill="#f77272" />
+                            <circle cx="61" cy="61" r="14" fill="#fabd23" />
+                            <circle cx="100" cy="100" r="22" fill="#c083fc" />
+                        </svg>
                     </div>
-                    <h1 className="text-xl font-bold tracking-tight text-gray-800">
-                        Tree{" "}
-                        <span className="text-blue-600 font-black">It</span>
+
+                    {/* Project Name */}
+                    <h1 className="text-2xl font-bold tracking-tight text-gray-800">
+                        Tree
+                        <span className="text-[#c083fc] font-black ml-1">
+                            It
+                        </span>
                     </h1>
                 </div>
 
                 {/* 2. User Profile Card */}
                 <div className="px-4 mb-6">
                     <motion.div
-                        className="flex items-center gap-3 bg-white border border-gray-100 shadow-sm p-2.5 rounded-xl cursor-pointer hover:border-blue-200 transition-colors"
+                        className="flex items-center gap-3 bg-white border border-gray-100 shadow-sm p-3 rounded-2xl cursor-pointer hover:border-[#c083fc]/30 transition-colors group"
                         onClick={() => setIsProfileModalOpen(true)}
                         whileHover={{ y: -1 }}
                     >
-                        <img
-                            src={avatar}
-                            alt="Avatar"
-                            className="w-9 h-9 rounded-full shadow-sm"
-                        />
-                        <div className="flex flex-col">
-                            <span className="text-sm font-bold text-gray-800 leading-tight">
+                        {/* Fun Emoji Avatar Container (Square with rounded corners) */}
+                        <div className="relative flex-shrink-0 w-12 h-12 rounded-xl overflow-hidden border border-gray-200 shadow-sm group-hover:border-[#c083fc] transition-colors">
+                            <img
+                                src={avatar}
+                                alt="User Avatar"
+                                className="w-full h-full object-cover"
+                            />
+                        </div>
+
+                        {/* User Info */}
+                        <div className="flex flex-col flex-1 overflow-hidden pr-2">
+                            <span className="text-[16px] font-bold text-gray-900 leading-tight truncate group-hover:text-[#c083fc] transition-colors">
                                 {username}
                             </span>
-                            <span className="text-xs text-gray-400 font-medium">
+                            <span className="text-xs text-gray-500 font-medium">
                                 Project Lead
                             </span>
                         </div>
+
+                        <FaCog className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors shrink-0" />
                     </motion.div>
                 </div>
 
@@ -476,20 +558,19 @@ const LeftSidebar = ({
                                 animate={{ y: 0, opacity: 1 }}
                                 transition={{ delay: 0.1 }}
                             >
-                                <motion.img
-                                    src={avatar}
-                                    alt="Current Avatar"
-                                    className="w-24 h-24 rounded-full border-4 border-blue-500 mb-4 shadow-lg"
-                                    whileHover={{
-                                        scale: 1.05,
-                                        boxShadow:
-                                            "0 0 0 4px rgba(59, 130, 246, 0.5)",
-                                    }}
-                                />
+                                {/* Large Fun Emoji Avatar for Modal */}
+                                <div className="w-24 h-24 rounded-2xl overflow-hidden border border-gray-200 shadow-lg mb-4">
+                                    <img
+                                        src={avatar}
+                                        alt="Current Avatar"
+                                        className="w-full h-full object-cover"
+                                    />
+                                </div>
+
                                 <h2 className="text-2xl font-bold text-gray-800 mb-1">
                                     {username}
                                 </h2>
-                                <p className="text-gray-500">
+                                <p className="text-gray-500 text-sm">
                                     {localStorage.getItem("email") ||
                                         "Email not set"}
                                 </p>
