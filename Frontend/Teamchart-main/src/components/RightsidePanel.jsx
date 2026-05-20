@@ -137,7 +137,7 @@ const RightsidePanel = ({
                             </div>
 
                             {/* Native Date Picker */}
-                            <div className="flex flex-col relative z-10">
+                            <div className="flex flex-col relative z-10 mb-6">
                                 <label className="text-xs font-semibold text-gray-600 mb-1 ml-1 uppercase tracking-wide">
                                     Deadline
                                 </label>
@@ -157,59 +157,94 @@ const RightsidePanel = ({
                                     }
                                     customInput={<CustomDateInput />}
                                     minDate={new Date()}
-                                    // KEEP THESE TWO (The actual fix for the blinking)
                                     portalId="root"
                                     popperPlacement="bottom-start"
-                                    // YOUR TIME SETTINGS
                                     showTimeInput
                                     timeInputLabel="Time:"
                                     dateFormat="MMM d, yyyy h:mm aa"
                                 />
                             </div>
 
-                            {/* Pro Tip */}
+                            {/* MOVED: Create Node Button directly under Deadline */}
+                            <motion.button
+                                onClick={handleCreateNode}
+                                onMouseEnter={() => setShowTip(true)}
+                                onMouseLeave={() => setShowTip(false)}
+                                whileHover={{
+                                    scale: 1.02,
+                                    backgroundColor: "#f8fafc",
+                                }}
+                                whileTap={{ scale: 0.98 }}
+                                // CHANGED: justify-center -> justify-start, added pl-6
+                                className="w-full flex items-center justify-start pl-6 gap-3 bg-white border-2 border-gray-200 text-gray-700 py-3 rounded-full font-bold transition-all shadow-sm hover:shadow-md mt-2"
+                            >
+                                {/* Custom Multi-colored Plus Icon */}
+                                <svg
+                                    width="18"
+                                    height="18"
+                                    viewBox="0 0 20 20"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="flex-shrink-0"
+                                >
+                                    <rect
+                                        x="9"
+                                        y="2"
+                                        width="2"
+                                        height="7"
+                                        fill="#f77272"
+                                    />
+                                    <rect
+                                        x="9"
+                                        y="11"
+                                        width="2"
+                                        height="7"
+                                        fill="#49de80"
+                                    />
+                                    <rect
+                                        x="2"
+                                        y="9"
+                                        width="7"
+                                        height="2"
+                                        fill="#fabd23"
+                                    />
+                                    <rect
+                                        x="11"
+                                        y="9"
+                                        width="7"
+                                        height="2"
+                                        fill="#c083fc"
+                                    />
+                                    <rect
+                                        x="9"
+                                        y="9"
+                                        width="2"
+                                        height="2"
+                                        fill="#c083fc"
+                                    />
+                                </svg>
+
+                                {/* CHANGED: Text back to Create Node */}
+                                <span className="text-[16px] tracking-wide text-gray-800">
+                                    Create Node
+                                </span>
+                            </motion.button>
+
+                            {/* Pro Tip (Matching the new Purple theme) */}
                             <AnimatePresence>
                                 {showTip && (
                                     <motion.div
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, y: 10 }}
-                                        className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-100 flex items-start gap-2"
+                                        className="mt-4 p-3 bg-[#fdfaef] rounded-lg border border-[#c083fc]/20 flex items-start gap-2"
                                     >
-                                        <FaRegLightbulb className="text-blue-500 mt-0.5 flex-shrink-0" />
-                                        <p className="text-xs text-blue-800 font-medium leading-relaxed">
+                                        <FaRegLightbulb className="text-[#c083fc] mt-0.5 flex-shrink-0" />
+                                        <p className="text-xs text-gray-700 font-medium leading-relaxed">
                                             {randomTip}
                                         </p>
                                     </motion.div>
                                 )}
                             </AnimatePresence>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="mt-6 pt-4 border-t border-gray-100 space-y-3">
-                            <button
-                                onClick={handleCreateNode}
-                                onMouseEnter={() => setShowTip(true)}
-                                onMouseLeave={() => setShowTip(false)}
-                                className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg font-semibold transition-colors shadow-lg shadow-blue-500/30"
-                            >
-                                <FaPlus /> Create Node
-                            </button>
-
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={saveGraph}
-                                    className="flex-1 flex items-center justify-center gap-2 bg-white border border-blue-500 text-blue-500 hover:bg-blue-50 py-2.5 rounded-lg font-medium transition-colors"
-                                >
-                                    <FaSave /> Save
-                                </button>
-                                <button
-                                    onClick={handleDownload}
-                                    className="flex-1 flex items-center justify-center gap-2 bg-white border border-blue-500 text-blue-500 hover:bg-blue-50 py-2.5 rounded-lg font-medium transition-colors"
-                                >
-                                    <FaDownload /> Export
-                                </button>
-                            </div>
                         </div>
                     </motion.div>
                 </motion.div>

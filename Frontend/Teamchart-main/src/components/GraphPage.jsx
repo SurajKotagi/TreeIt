@@ -39,6 +39,7 @@ import { showError, showSuccess } from "./utility/ToastNotofication";
 import "reactflow/dist/style.css";
 import "react-quill/dist/quill.snow.css";
 import { FaBars } from "react-icons/fa";
+import { FaSave, FaDownload } from "react-icons/fa"; // Ensure these are imported!
 
 const imageWidth = 1024;
 const imageHeight = 768;
@@ -687,6 +688,41 @@ const Content = ({ selectedProjectId }) => {
                             : "No Project Selected"}
                     </div>
                 </div>
+            </Panel>
+
+            {/* ✨ NEW: TOP-RIGHT GLOBAL ACTIONS ✨ */}
+            {/* ✨ TOP-RIGHT GLOBAL ACTIONS ✨ */}
+            <Panel
+                position="top-right"
+                // Kept your existing classes, just ensuring it has a proper z-index
+                className="mt-5 mr-5 flex gap-3 z-40"
+                // ADDED THIS STYLE BLOCK: Forces the buttons to slide with the sidebar
+                style={{
+                    transition: "transform 0.3s ease-in-out",
+                    transform: isSidebarOpen
+                        ? "translateX(-45%)"
+                        : "translateX(0px)",
+                }}
+            >
+                <motion.button
+                    onClick={saveGraph}
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.97 }}
+                    className="group flex items-center justify-center gap-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-700 hover:text-indigo-600 hover:bg-gray-50 hover:border-gray-300 px-4 py-2.5 rounded-xl font-medium transition-all shadow-sm"
+                >
+                    <FaSave className="text-gray-400 group-hover:text-indigo-500 transition-colors" />{" "}
+                    Save
+                </motion.button>
+
+                <motion.button
+                    onClick={handleDownload}
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.97 }}
+                    className="group flex items-center justify-center gap-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-700 hover:text-indigo-600 hover:bg-gray-50 hover:border-gray-300 px-4 py-2.5 rounded-xl font-medium transition-all shadow-sm"
+                >
+                    <FaDownload className="text-gray-400 group-hover:text-indigo-500 transition-colors" />{" "}
+                    Export
+                </motion.button>
             </Panel>
 
             {/* ✨ MOVED TO BOTTOM-LEFT SAFE ZONE ✨ */}
