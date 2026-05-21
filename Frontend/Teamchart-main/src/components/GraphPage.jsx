@@ -55,7 +55,7 @@ function downloadImage(dataUrl) {
     a.click();
 }
 
-const Content = ({ selectedProjectId }) => {
+const Content = ({ selectedProjectId, projectName }) => {
     const { getNodes } = useReactFlow();
     const ref = useRef(null);
 
@@ -682,9 +682,10 @@ const Content = ({ selectedProjectId }) => {
                         ></span>
                     </div>
 
-                    <div className="text-sm font-semibold text-gray-700 uppercase tracking-wider mt-0.5">
+                    {/* CHANGED: Removed 'uppercase' and 'tracking-wider' to keep natural casing! */}
+                    <div className="text-sm font-semibold text-gray-700 mt-0.5">
                         {selectedProjectId
-                            ? `Project / ${selectedProjectId}`
+                            ? projectName || "Unnamed Project"
                             : "No Project Selected"}
                     </div>
                 </div>
@@ -790,7 +791,7 @@ const Content = ({ selectedProjectId }) => {
     );
 };
 
-const ReactFlowProviderContent = ({ selectedProjectId }) => {
+const ReactFlowProviderContent = ({ selectedProjectId, projectName }) => {
     const { isSidebarOpen } = useGlobalContext();
 
     return (
@@ -803,7 +804,10 @@ const ReactFlowProviderContent = ({ selectedProjectId }) => {
                     isSidebarOpen ? "mr-64" : ""
                 }`}
             >
-                <Content selectedProjectId={selectedProjectId} />
+                <Content
+                    selectedProjectId={selectedProjectId}
+                    projectName={projectName}
+                />
             </motion.div>
         </ReactFlowProvider>
     );

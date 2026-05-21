@@ -21,7 +21,8 @@ const LeftSidebar = ({
     setSelectedProjectId,
 }) => {
     const username = localStorage.getItem("username") || "User";
-    const defaultAvatar = `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${username}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf&eyes=closed&mouth=lilSmile`;
+
+    const defaultAvatar = `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${username}&backgroundColor=49de80,f77272,fabd23,3b82f6&eyes=closed,glasses,stars&mouth=lilSmile`;
     const [isProjectOpen, setIsProjectOpen] = useState(true);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [avatar, setAvatar] = useState(defaultAvatar);
@@ -136,7 +137,7 @@ const LeftSidebar = ({
 
     // This picks a random color from your brand palette ONCE when the sidebar loads
     const [avatarColor] = useState(() => {
-        const colors = ["#f77272", "#fabd23", "#c083fc", "#49de80"];
+        const colors = ["#f77272", "#fabd23", "#49de80"];
         return colors[Math.floor(Math.random() * colors.length)];
     });
 
@@ -151,7 +152,7 @@ const LeftSidebar = ({
                 {/* 1. App Logo Header */}
                 <div className="flex items-center gap-3 px-5 py-6">
                     {/* New Brand Logo (Concept D) */}
-                    <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 flex items-center justify-center shrink-0">
                         <svg
                             viewBox="0 0 200 200"
                             className="w-full h-full drop-shadow-sm"
@@ -163,7 +164,7 @@ const LeftSidebar = ({
                                     y1="100"
                                     x2="100"
                                     y2="45"
-                                    stroke="#c083fc"
+                                    stroke="#3b82f6"
                                 />
                                 <line
                                     x1="100"
@@ -208,21 +209,21 @@ const LeftSidebar = ({
                                     stroke="#fabd23"
                                 />
                             </g>
-                            <circle cx="100" cy="45" r="14" fill="#c083fc" />
+                            <circle cx="100" cy="45" r="14" fill="#3b82f6" />
                             <circle cx="139" cy="61" r="14" fill="#49de80" />
                             <circle cx="155" cy="100" r="14" fill="#49de80" />
                             <circle cx="100" cy="155" r="14" fill="#c083fc" />
                             <circle cx="61" cy="139" r="14" fill="#f77272" />
                             <circle cx="45" cy="100" r="14" fill="#f77272" />
                             <circle cx="61" cy="61" r="14" fill="#fabd23" />
-                            <circle cx="100" cy="100" r="22" fill="#c083fc" />
+                            <circle cx="100" cy="100" r="22" fill="#3b82f6" />
                         </svg>
                     </div>
 
                     {/* Project Name */}
                     <h1 className="text-2xl font-bold tracking-tight text-gray-800">
                         Tree
-                        <span className="text-[#c083fc] font-black ml-1">
+                        <span className="text-[#1f2a38] font-black ml-1">
                             It
                         </span>
                     </h1>
@@ -231,12 +232,12 @@ const LeftSidebar = ({
                 {/* 2. User Profile Card */}
                 <div className="px-4 mb-6">
                     <motion.div
-                        className="flex items-center gap-3 bg-white border border-gray-100 shadow-sm p-3 rounded-2xl cursor-pointer hover:border-[#c083fc]/30 transition-colors group"
+                        className="flex items-center gap-3 bg-white border border-gray-100 shadow-sm p-3 rounded-2xl cursor-pointer hover:border-[#fafafa]/30 transition-colors group"
                         onClick={() => setIsProfileModalOpen(true)}
                         whileHover={{ y: -1 }}
                     >
                         {/* Fun Emoji Avatar Container (Square with rounded corners) */}
-                        <div className="relative flex-shrink-0 w-12 h-12 rounded-xl overflow-hidden border border-gray-200 shadow-sm group-hover:border-[#c083fc] transition-colors">
+                        <div className="relative flex-shrink-0 w-12 h-12 rounded-xl overflow-hidden border border-gray-200 shadow-sm group-hover:border-[#fafafa] transition-colors">
                             <img
                                 src={avatar}
                                 alt="User Avatar"
@@ -246,7 +247,7 @@ const LeftSidebar = ({
 
                         {/* User Info */}
                         <div className="flex flex-col flex-1 overflow-hidden pr-2">
-                            <span className="text-[16px] font-bold text-gray-900 leading-tight truncate group-hover:text-[#c083fc] transition-colors">
+                            <span className="text-[16px] font-bold text-gray-900 leading-tight truncate group-hover:text-[#3b82f6] transition-colors">
                                 {username}
                             </span>
                             <span className="text-xs text-gray-500 font-medium">

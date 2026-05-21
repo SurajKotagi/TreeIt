@@ -71,7 +71,7 @@ const RightsidePanel = ({
                         <div className="mb-6">
                             <h2 className="text-2xl font-bold text-gray-800">
                                 Node{" "}
-                                <span className="text-blue-500">Details</span>
+                                <span className="text-gray-800">Details</span>
                             </h2>
                             <p className="text-sm text-gray-500 mt-1">
                                 Configure your task parameters
@@ -79,7 +79,8 @@ const RightsidePanel = ({
                         </div>
 
                         {/* Form Inputs (Tailwind Styled) */}
-                        <div className="flex flex-col gap-4 flex-grow overflow-y-auto pr-2 custom-scrollbar">
+                        {/* CHANGED: Added px-1 to give the focus rings horizontal room to expand without getting clipped! */}
+                        <div className="flex flex-col gap-4 flex-grow overflow-y-auto px-1 pr-3 custom-scrollbar">
                             {/* Task Input */}
                             <div className="flex flex-col">
                                 <label className="text-xs font-semibold text-gray-600 mb-1 ml-1 uppercase tracking-wide">
@@ -171,7 +172,7 @@ const RightsidePanel = ({
                                 onMouseEnter={() => setShowTip(true)}
                                 onMouseLeave={() => setShowTip(false)}
                                 whileHover={{
-                                    scale: 1.02,
+                                    scale: 1.01,
                                     backgroundColor: "#f8fafc",
                                 }}
                                 whileTap={{ scale: 0.98 }}

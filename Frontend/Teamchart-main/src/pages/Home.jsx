@@ -142,8 +142,14 @@ const Home = () => {
                             />
                         </div>
                     ) : (
+                        // ✨ ADDED: Find the name of the currently selected project ✨
                         <ReactFlowProviderContent
                             selectedProjectId={selectedProjectId}
+                            projectName={
+                                projects.find(
+                                    (p) => p.projectId === selectedProjectId,
+                                )?.name
+                            }
                         />
                     )}
                 </motion.div>
