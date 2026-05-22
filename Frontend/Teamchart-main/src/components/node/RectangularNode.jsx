@@ -1,23 +1,55 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { memo, useState, useCallback, useEffect } from "react";
 import { Handle, Position } from "reactflow";
-import { FaUser, FaComment } from "react-icons/fa";
-import { FaCheckCircle, FaClock, FaExclamationTriangle, FaCalendarAlt } from "react-icons/fa";
 import { motion } from "framer-motion";
+import {
+    FaCheckCircle,
+    FaClock,
+    FaExclamationCircle,
+    FaRegCircle,
+    FaCalendarAlt,
+    FaComment,
+} from "react-icons/fa";
 
-export default function RectangularNode({ data }) {
+const RectangularNode = ({ data }) => {
     const [progress, setProgress] = useState(0);
-    const [isHovered, setIsHovered] = useState(false);
 
-    const formatDate = (dateString) => {
-        if (!dateString) return "";
-        const date = new Date(dateString);
-        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    // 1. Calculate Elapsed Time for Bubble (Current Time - Assigned Time)
+    const getElapsedTime = (createdTime) => {
+        const startTime = createdTime || data.assignedAt;
+        if (!startTime) return { value: 0, label: "mins" };
+
+        const now = new Date();
+        const created = new Date(startTime);
+        const diffMs = now - created;
+
+        if (diffMs < 0) return { value: 0, label: "mins" };
+
+        const diffMins = Math.floor(diffMs / (1000 * 60));
+        if (diffMins < 60) return { value: diffMins, label: "mins" };
+
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        if (diffHours < 24) return { value: diffHours, label: "hours" };
+
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        return { value: diffDays, label: "days" };
     };
 
-    const updateProgress = useCallback(() => {
-        if (!data.createdTime || !data.deadline) return;
+    // 2. Format Deadline Date
+    const formatDeadline = (dateString) => {
+        if (!dateString) return "No deadline";
+        const d = new Date(dateString);
+        return d.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+        });
+    };
 
-        const start = new Date(data.createdTime);
+    // 3. Progress Bar Calculation
+    const updateProgress = useCallback(() => {
+        const startTime = data.createdTime || data.assignedAt;
+        if (!startTime || !data.deadline) return;
+
+        const start = new Date(startTime);
         const end = new Date(data.deadline);
         const now = new Date();
 
@@ -25,196 +57,184 @@ export default function RectangularNode({ data }) {
         const elapsed = now - start;
 
         if (total <= 0) {
-            setProgress(100); // Deadline already passed
+            setProgress(100);
             return;
         }
 
         const percent = Math.min(100, Math.max(0, (elapsed / total) * 100));
-        setProgress(percent.toFixed(2));
-    }, [data.createdTime, data.deadline]);
+        setProgress(percent.toFixed(0));
+    }, [data.createdTime, data.assignedAt, data.deadline]);
 
+    // 4. Update Progress periodically
     useEffect(() => {
-        if (!data.createdTime || !data.deadline) return;
-
-        updateProgress(); // Call once immediately
-        const interval = setInterval(updateProgress, 60000); // Update every 1 min
-
+        updateProgress();
+        const interval = setInterval(updateProgress, 60000); // Update every 1 minute
         return () => clearInterval(interval);
-    }, [data.createdTime, data.deadline, updateProgress]);
+    }, [updateProgress]);
 
-    // Determine card border color based on status
-    const getBorderClass = () => {
-        switch (data.status) {
-            case "completed":
-                return "border-t-4 border-t-green-500";
-            case "stuck":
-                return "border-t-4 border-t-red-500";
-            case "pending":
-                return "border-t-4 border-t-blue-500";
-            case "unpicked":
-            default:
-                return "border-t-4 border-t-gray-400"; // Grey for unpicked or any other status
-        }
+    // 5. Status Configuration Map
+    const statusConfig = {
+        completed: {
+            text: "text-green-600",
+            bg: "bg-green-500",
+            border: "border-green-500",
+            icon: <FaCheckCircle />,
+        },
+        pending: {
+            text: "text-blue-500",
+            bg: "bg-blue-500",
+            border: "border-blue-500",
+            icon: <FaClock />,
+        },
+        stuck: {
+            text: "text-amber-500",
+            bg: "bg-amber-500",
+            border: "border-amber-500",
+            icon: <FaExclamationCircle />,
+        },
+        unpicked: {
+            text: "text-gray-400",
+            bg: "bg-gray-400",
+            border: "border-gray-300",
+            icon: <FaRegCircle />,
+        },
     };
 
-    // Get status icon with animation
-    const getStatusIcon = () => {
-        switch(data.status) {
-            case "completed":
-                return <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring" }}>
-                    <FaCheckCircle className="text-green-500 text-sm" />
-                </motion.div>;
-            case "pending":
-                return <motion.div animate={{ rotate: [0, 15, 0, -15, 0] }} transition={{ repeat: Infinity, duration: 5 }}>
-                    <FaClock className="text-blue-500 text-sm" />
-                </motion.div>;
-            case "stuck":
-                return <motion.div animate={{ y: [0, -3, 0] }} transition={{ repeat: Infinity, duration: 1.5 }}>
-                    <FaExclamationTriangle className="text-yellow-500 text-sm" />
-                </motion.div>;
-            default:
-                return <FaClock className="text-gray-400 text-sm" />;
-        }
-    };
+    const currentStatus = data.status || "unpicked";
+    const config = statusConfig[currentStatus] || statusConfig.unpicked;
+    const elapsed = getElapsedTime(data.createdTime);
 
     return (
-        <motion.div
-            className={`w-[260px] p-3 bg-white rounded-xl shadow-md border border-gray-200 relative ${getBorderClass()} hover:shadow-lg`}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            whileHover={{ y: -5, transition: { duration: 0.2 } }}
-        >
-            {/* Handles for connection with animation */}
-            <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: isHovered ? 1 : 0.5 }}
-                transition={{ duration: 0.2 }}
-            >
-                <Handle 
-                    type="target" 
-                    position={Position.Left} 
-                    style={{ background: "#000", width: 8, height: 8 }} 
-                />
-                <Handle 
-                    type="source" 
-                    position={Position.Right} 
-                    style={{ background: "#000", width: 8, height: 8 }} 
-                />
-            </motion.div>
+        <div className="group bg-white rounded-xl shadow-lg border border-gray-100 min-w-[260px] max-w-[300px] relative transition-all hover:-translate-y-1 hover:shadow-xl duration-200 cursor-pointer">
+            {/* The Top Colored Strip */}
+            <div
+                className={`absolute top-0 left-0 right-0 h-1.5 rounded-t-xl ${config.bg}`}
+            />
 
-            {/* Priority indicator with animation */}
+            {/* Connection Handles */}
+            <Handle
+                type="target"
+                position={Position.Left}
+                className="w-2.5 h-2.5 bg-gray-800 border-none"
+                style={{ left: -5 }}
+            />
+            <Handle
+                type="source"
+                position={Position.Right}
+                className="w-2.5 h-2.5 bg-gray-800 border-none"
+                style={{ right: -5 }}
+            />
+
+            {/* Priority indicator (from your original code) */}
             {data.priority && (
-                <motion.div 
-                    className={`absolute -top-2 -left-2 px-2 py-0.5 rounded-full text-[10px] font-bold text-white ${
-                        data.priority === "high" ? "bg-red-500" : 
-                        data.priority === "medium" ? "bg-orange-500" : "bg-blue-500"
+                <div
+                    className={`absolute -top-3 left-4 px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-bold text-white shadow-sm ${
+                        data.priority === "high"
+                            ? "bg-red-500"
+                            : data.priority === "medium"
+                              ? "bg-amber-500"
+                              : "bg-blue-500"
                     }`}
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 20 }}
                 >
                     {data.priority}
-                </motion.div>
-            )}
-
-            {/* Header with subtle hover effect */}
-            <div className="text-xs text-gray-500 flex justify-between mb-1 group">
-                <span className="transition-colors duration-200 group-hover:text-gray-700">Assigned to</span>
-                <span className="font-medium transition-colors duration-200 group-hover:text-blue-600">{data.assignedTo}</span>
-            </div>
-
-            <div className="text-xs text-gray-500 flex justify-between mb-1 group">
-                <span className="transition-colors duration-200 group-hover:text-gray-700">Assigned by</span>
-                <span className="font-medium transition-colors duration-200 group-hover:text-blue-600">{data.assignedBy}</span>
-            </div>
-
-            {/* Status with animated icons */}
-            <div className="text-xs text-gray-500 flex justify-between mb-1">
-                <span>Status</span>
-                <span className="flex items-center gap-1">
-                    {getStatusIcon()}
-                    <motion.span 
-                        className="capitalize font-medium"
-                        initial={{ x: -5, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ delay: 0.1 }}
-                    >
-                        {data.status}
-                    </motion.span>
-                </span>
-            </div>
-
-            {/* Task with highlight effect */}
-            {data.task && (
-                <motion.div 
-                    className="text-sm font-bold text-gray-700 mb-2 break-words"
-                    whileHover={{ color: "#3b82f6" }}
-                    transition={{ duration: 0.2 }}
-                >
-                    {data.task}
-                </motion.div>
-            )}
-
-            {/* Description with reveal effect */}
-            {data.description && (
-                <motion.div 
-                    className="text-xs text-gray-600 mb-2 line-clamp-2 overflow-hidden"
-                    initial={{ height: "0" }}
-                    animate={{ height: "auto" }}
-                    transition={{ duration: 0.3 }}
-                >
-                    {data.description}
-                </motion.div>
-            )}
-
-            {/* Deadline date display with hover effect */}
-            {data.deadline && (
-                <motion.div 
-                    className="flex items-center text-xs text-gray-500 mb-1 group"
-                    whileHover={{ x: 2 }}
-                >
-                    <FaCalendarAlt className="mr-1 text-gray-400 group-hover:text-blue-500 transition-colors duration-200" />
-                    <span>Due: {formatDate(data.deadline)}</span>
-                </motion.div>
-            )}
-
-            {/* Progress bar with animation */}
-            {data.status !== "completed" && data.deadline && (
-                <div className="mt-2">
-                    <div className="flex justify-between text-xs text-gray-500 mb-1">
-                        <span>Progress</span>
-                        <span>{progress}% time passed</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                        <motion.div
-                            className={`h-2.5 rounded-full ${
-                                progress > 90 ? "bg-red-500" : 
-                                progress > 70 ? "bg-orange-400" : "bg-green-500"
-                            }`}
-                            initial={{ width: "0%" }}
-                            animate={{ width: `${progress}%` }}
-                            transition={{ duration: 1, ease: "easeOut" }}
-                        />
-                    </div>
                 </div>
             )}
 
-            {/* Comments indicator with animation */}
-            {data.comments && data.comments.length > 0 && (
-                <motion.div 
-                    className="mt-2 text-xs text-gray-500 flex items-center"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                    whileHover={{ scale: 1.05 }}
+            {/* Hover Time Bubble */}
+            <div
+                className={`absolute -top-7 -right-7 w-12 h-12 bg-white rounded-full border-[3px] shadow-md flex flex-col items-center justify-center z-10 transition-all duration-300 ease-out opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 ${config.border}`}
+            >
+                <span
+                    className={`text-sm font-bold leading-none mt-0.5 ${config.text}`}
                 >
-                    <FaComment className="mr-1 text-gray-400" />
-                    <span>{data.comments.length} comment{data.comments.length !== 1 ? 's' : ''}</span>
-                </motion.div>
-            )}
-        </motion.div>
+                    {elapsed.value}
+                </span>
+                <span
+                    className={`text-[10px] font-medium leading-tight ${config.text}`}
+                >
+                    {elapsed.label}
+                </span>
+            </div>
+
+            {/* Main Card Content */}
+            <div className="p-4 pt-5 flex flex-col gap-3">
+                {/* Meta Grid: Assigned To & Status */}
+                <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm items-center">
+                    <span className="text-gray-500 font-medium">
+                        Assigned to
+                    </span>
+                    <span className="text-right text-gray-800 font-medium truncate">
+                        {data.assignedTo || "Unassigned"}
+                    </span>
+
+                    <span className="text-gray-500 font-medium">Status</span>
+                    <span
+                        className={`text-right font-medium flex items-center justify-end gap-1.5 ${config.text}`}
+                    >
+                        {config.icon}
+                        <span className="capitalize">{currentStatus}</span>
+                    </span>
+                </div>
+
+                {/* Subtitle Divider */}
+                <div className="w-full h-px bg-gray-100 my-1" />
+
+                {/* Task Information */}
+                <div className="flex flex-col gap-1 group-hover:text-blue-600 transition-colors">
+                    <h3 className="text-lg font-bold text-slate-800 leading-snug">
+                        {data.task || "Untitled Task"}
+                    </h3>
+
+                    {data.description && (
+                        <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed mt-0.5">
+                            {data.description}
+                        </p>
+                    )}
+                </div>
+
+                {/* Footer: Due Date */}
+                <div className="flex items-center gap-1.5 text-sm text-gray-500 mt-1 font-medium">
+                    <FaCalendarAlt className="text-gray-400" />
+                    <span>Due: {formatDeadline(data.deadline)}</span>
+                </div>
+
+                {/* Progress bar (from your original code, modernized) */}
+                {data.status !== "completed" && data.deadline && (
+                    <div className="mt-1">
+                        <div className="flex justify-between text-[11px] font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">
+                            <span>Time Elapsed</span>
+                            <span>{progress}%</span>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden shadow-inner">
+                            <motion.div
+                                className={`h-2 rounded-full ${
+                                    progress > 90
+                                        ? "bg-red-500"
+                                        : progress > 70
+                                          ? "bg-amber-400"
+                                          : "bg-green-500"
+                                }`}
+                                initial={{ width: "0%" }}
+                                animate={{ width: `${progress}%` }}
+                                transition={{ duration: 1, ease: "easeOut" }}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* Comments indicator (from your original code) */}
+                {data.comments && data.comments.length > 0 && (
+                    <div className="text-xs text-gray-500 font-medium flex items-center mt-1">
+                        <FaComment className="mr-1.5 text-gray-400" />
+                        <span>
+                            {data.comments.length} comment
+                            {data.comments.length !== 1 ? "s" : ""}
+                        </span>
+                    </div>
+                )}
+            </div>
+        </div>
     );
-}
+};
+
+export default memo(RectangularNode);
