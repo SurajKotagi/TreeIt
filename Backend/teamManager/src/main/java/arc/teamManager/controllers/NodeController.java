@@ -2,6 +2,7 @@ package arc.teamManager.controllers;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,14 +50,58 @@ public class NodeController {
 
     @PostMapping("/save")
     public ResponseEntity<?> saveGraph(@RequestBody GraphDataRequest request) {
-        nodeRepo.saveAll(request.getNodes());
-        edgeRepo.saveAll(request.getEdges());
-        return ResponseEntity.ok("Saved successfully");
+        String projectId = request.getProjectId();
+        if (projectId == null || projectId.isEmpty()) {
+            return ResponseEntity.badRequest().body("Project ID is required for saving.");
+        }
+
+        // ==========================================
+        // 1. HANDLE NODES (Delta Merge)
+        // ==========================================
+        if (request.getNodes() != null && !request.getNodes().isEmpty()) {
+            // Extract all Node IDs currently visible on the frontend canvas
+            List<String> activeNodeIds = request.getNodes().stream()
+                    .map(GraphNode::getGraphNodeId)
+                    .collect(Collectors.toList());
+
+            // Delete any nodes in the DB that belong to this project but aren't on the
+            // canvas anymore
+            nodeRepo.deleteGhostNodes(projectId, activeNodeIds);
+
+            // Save new nodes & Update existing ones
+            nodeRepo.saveAll(request.getNodes());
+        } else {
+            // If the request contains 0 nodes, the user deleted everything. Clear the
+            // project.
+            nodeRepo.deleteAllByProjectId(projectId);
+        }
+
+        // ==========================================
+        // 2. HANDLE EDGES (Delta Merge)
+        // ==========================================
+        if (request.getEdges() != null && !request.getEdges().isEmpty()) {
+            // Extract all Edge IDs currently visible on the frontend canvas
+            List<String> activeEdgeIds = request.getEdges().stream()
+                    .map(GraphEdge::getGraphEdgeId)
+                    .collect(Collectors.toList());
+
+            // Delete any edges in the DB that aren't on the canvas anymore
+            edgeRepo.deleteGhostEdges(projectId, activeEdgeIds);
+
+            // Save new edges & Update existing ones
+            edgeRepo.saveAll(request.getEdges());
+        } else {
+            // If the request contains 0 edges, clear all edges for the project.
+            edgeRepo.deleteAllByProjectId(projectId);
+        }
+
+        return ResponseEntity.ok("Graph synced successfully");
     }
 
     @PostMapping("/mail")
     public ResponseEntity<?> mailAlert(@RequestBody MailRequest request) {
-        mailService.sendTaskAssignedEmail("surajsanjaykotagi@gmail.com", request.getNode().getData().getAssignedBy(), request.getNode().getData().getTask(), request.getNode().getData().getDescription());
+        mailService.sendTaskAssignedEmail("surajsanjaykotagi@gmail.com", request.getNode().getData().getAssignedBy(),
+                request.getNode().getData().getTask(), request.getNode().getData().getDescription());
         return ResponseEntity.ok("Saved successfully");
     }
 

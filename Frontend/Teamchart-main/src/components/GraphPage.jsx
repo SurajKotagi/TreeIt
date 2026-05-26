@@ -39,7 +39,7 @@ import { showError, showSuccess } from "./utility/ToastNotofication";
 import "reactflow/dist/style.css";
 import "react-quill/dist/quill.snow.css";
 import { FaBars } from "react-icons/fa";
-import { FaSave, FaDownload } from "react-icons/fa"; // Ensure these are imported!
+import { FaSave, FaDownload, FaCheckCircle } from "react-icons/fa"; // Ensure these are imported!
 
 const imageWidth = 1024;
 const imageHeight = 768;
@@ -86,6 +86,38 @@ const Content = ({ selectedProjectId, projectName }) => {
     const [showModal, setShowModal] = useState(false);
     const [menu, setMenu] = useState(null);
     const [todos, setTodos] = useState([]);
+    const [isAutosaving, setIsAutosaving] = useState(false);
+    const [saveStatus, setSaveStatus] = useState("Saved"); // "Save", "Saving...", "Saved"
+
+    // ✨ NEW: The Autosave Engine
+    useEffect(() => {
+        // Skip if no project is selected or if the graph is completely empty
+        if (!selectedProjectId || nodes.length === 0) return;
+
+        // Change status to let user know there are unsaved changes
+        setSaveStatus("Unsaved");
+
+        // Start a 1.5 second countdown timer
+        const autoSaveTimer = setTimeout(async () => {
+            setIsAutosaving(true);
+            setSaveStatus("Saving...");
+
+            try {
+                // Call your existing silent save function
+                await saveGraphNoAlert(nodes, edges);
+                setSaveStatus("Saved");
+            } catch (error) {
+                console.error("Autosave failed", error);
+                setSaveStatus("Error");
+            } finally {
+                setIsAutosaving(false);
+            }
+        }, 1500); // Waits 1.5 seconds after the user STOPS moving things
+
+        // If the user moves a node again before 1.5s is up, this clears the old timer
+        // and starts a new one, preventing database spam.
+        return () => clearTimeout(autoSaveTimer);
+    }, [nodes, edges, selectedProjectId]);
 
     // Fetch project members when project changes
     useEffect(() => {
@@ -323,7 +355,6 @@ const Content = ({ selectedProjectId, projectName }) => {
         await api.post(`/mail`, {
             node: newNode,
         });
-        await saveGraphNoAlert(updatedNodes, edges);
         showSuccess("Node created successfully");
     };
 
@@ -354,6 +385,7 @@ const Content = ({ selectedProjectId, projectName }) => {
         }));
 
         await api.post(`/save`, {
+            projectId: selectedProjectId,
             nodes: formattedNodes,
             edges: formattedEdges,
         });
@@ -363,8 +395,24 @@ const Content = ({ selectedProjectId, projectName }) => {
 
     // Save graph with success notification
     const saveGraph = async () => {
-        await saveGraphNoAlert(nodes, edges);
-        showSuccess("Graph saved successfully!");
+        // 1. Instantly trigger the UI loading state
+        setIsAutosaving(true);
+        setSaveStatus("Saving...");
+
+        try {
+            // 2. Force the immediate save
+            await saveGraphNoAlert(nodes, edges);
+
+            // 3. Update the UI to success
+            setSaveStatus("Saved");
+            showSuccess("Graph saved successfully!");
+        } catch (error) {
+            console.error("Manual save failed", error);
+            setSaveStatus("Error");
+            showError("Failed to save graph");
+        } finally {
+            setIsAutosaving(false);
+        }
     };
 
     // Filter nodes by project ID
@@ -691,13 +739,10 @@ const Content = ({ selectedProjectId, projectName }) => {
                 </div>
             </Panel>
 
-            {/* ✨ NEW: TOP-RIGHT GLOBAL ACTIONS ✨ */}
             {/* ✨ TOP-RIGHT GLOBAL ACTIONS ✨ */}
             <Panel
                 position="top-right"
-                // Kept your existing classes, just ensuring it has a proper z-index
                 className="mt-5 mr-5 flex gap-3 z-40"
-                // ADDED THIS STYLE BLOCK: Forces the buttons to slide with the sidebar
                 style={{
                     transition: "transform 0.3s ease-in-out",
                     transform: isSidebarOpen
@@ -705,16 +750,33 @@ const Content = ({ selectedProjectId, projectName }) => {
                         : "translateX(0px)",
                 }}
             >
+                {/* Smart Autosave Button */}
                 <motion.button
                     onClick={saveGraph}
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.97 }}
-                    className="group flex items-center justify-center gap-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-700 hover:text-indigo-600 hover:bg-gray-50 hover:border-gray-300 px-4 py-2.5 rounded-xl font-medium transition-all shadow-sm"
+                    disabled={isAutosaving || saveStatus === "Saved"}
+                    className={`group flex items-center justify-center gap-2 bg-white/80 backdrop-blur-md border px-4 py-2.5 rounded-xl font-medium transition-all shadow-sm
+                        ${saveStatus === "Unsaved" ? "border-amber-300 text-amber-600 hover:bg-amber-50" : ""}
+                        ${saveStatus === "Saving..." ? "border-blue-300 text-blue-500 opacity-80 cursor-wait" : ""}
+                        ${saveStatus === "Saved" ? "border-gray-200 text-gray-500 cursor-default" : "border-gray-200 text-gray-700 hover:text-indigo-600"}
+                    `}
                 >
-                    <FaSave className="text-gray-400 group-hover:text-indigo-500 transition-colors" />{" "}
-                    Save
+                    {saveStatus === "Saving..." ? (
+                        // A spinning icon while communicating with backend
+                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    ) : saveStatus === "Saved" ? (
+                        <FaCheckCircle className="text-green-500" />
+                    ) : (
+                        <FaSave
+                            className={`${saveStatus === "Unsaved" ? "text-amber-500" : "text-gray-400 group-hover:text-indigo-500"} transition-colors`}
+                        />
+                    )}
+
+                    {saveStatus === "Unsaved" ? "Save Now" : saveStatus}
                 </motion.button>
 
+                {/* Export Button (unchanged) */}
                 <motion.button
                     onClick={handleDownload}
                     whileHover={{ y: -2 }}
