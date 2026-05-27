@@ -88,23 +88,29 @@ const Content = ({ selectedProjectId, projectName }) => {
     const [todos, setTodos] = useState([]);
     const [isAutosaving, setIsAutosaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState("Saved"); // "Save", "Saving...", "Saved"
+    // ✨ ADD THIS NEW STATE: Acts as a lock to prevent bad saves
+    const [isFetchingGraph, setIsFetchingGraph] = useState(true);
 
     // ✨ NEW: The Autosave Engine
     useEffect(() => {
-        // Skip if no project is selected or if the graph is completely empty
-        if (!selectedProjectId || nodes.length === 0) return;
+        // 1. Skip if no project, empty graph, OR if we are currently transitioning/fetching
+        if (!selectedProjectId || nodes.length === 0 || isFetchingGraph) return;
 
-        // Change status to let user know there are unsaved changes
+        // 2. Double Security Check: Ensure we don't accidentally save Project A's nodes into Project B
+        const currentProjectNodes = nodes.filter(
+            (n) => `${n.data.projectId}` === `${selectedProjectId}`,
+        );
+        if (currentProjectNodes.length !== nodes.length) return;
+
         setSaveStatus("Unsaved");
 
-        // Start a 1.5 second countdown timer
         const autoSaveTimer = setTimeout(async () => {
             setIsAutosaving(true);
             setSaveStatus("Saving...");
 
             try {
-                // Call your existing silent save function
-                await saveGraphNoAlert(nodes, edges);
+                // 3. Save ONLY the nodes verified for this project
+                await saveGraphNoAlert(currentProjectNodes, edges);
                 setSaveStatus("Saved");
             } catch (error) {
                 console.error("Autosave failed", error);
@@ -112,12 +118,10 @@ const Content = ({ selectedProjectId, projectName }) => {
             } finally {
                 setIsAutosaving(false);
             }
-        }, 1500); // Waits 1.5 seconds after the user STOPS moving things
+        }, 1500);
 
-        // If the user moves a node again before 1.5s is up, this clears the old timer
-        // and starts a new one, preventing database spam.
         return () => clearTimeout(autoSaveTimer);
-    }, [nodes, edges, selectedProjectId]);
+    }, [nodes, edges, selectedProjectId, isFetchingGraph]);
 
     // Fetch project members when project changes
     useEffect(() => {
@@ -139,8 +143,15 @@ const Content = ({ selectedProjectId, projectName }) => {
     useEffect(() => {
         const fetchGraphData = async () => {
             if (!selectedProjectId) return;
+
+            // 1. LOCK AUTOSAVE & CLEAR OLD DATA
+            setIsFetchingGraph(true);
+            setNodes([]);
+            setEdges([]);
+
             try {
                 const res = await api.get(`/load/${selectedProjectId}`);
+
                 const backendNodes = res.data.nodes.map((node) => ({
                     id: node.graphNodeId.toString(),
                     position: { x: node.posX, y: node.posY },
@@ -171,6 +182,9 @@ const Content = ({ selectedProjectId, projectName }) => {
                 setEdges(backendEdges);
             } catch (err) {
                 console.error("❌ Failed to fetch graph data", err);
+            } finally {
+                // 2. UNLOCK AUTOSAVE (with a 500ms delay to let ReactFlow settle the canvas first)
+                setTimeout(() => setIsFetchingGraph(false), 500);
             }
         };
         fetchGraphData();
