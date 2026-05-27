@@ -33,21 +33,6 @@ const LeftSidebar = ({
     const [modalProject, setModalProject] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
 
-    // Fetch all members when Add Members modal is opened
-    useEffect(() => {
-        const fetchAllMembers = async () => {
-            try {
-                const res = await api.get(`/members`);
-                setAllMembers(res.data);
-            } catch (error) {
-                console.error("Error fetching members:", error);
-                setAllMembers([]);
-            }
-        };
-
-        if (modalProject) fetchAllMembers();
-    }, [modalProject]);
-
     const availableCandidates = allMembers.filter(
         (member) => !modalProject?.members?.some((m) => m._id === member._id),
     );
@@ -63,17 +48,32 @@ const LeftSidebar = ({
 
     const openAddMemberModal = async (project) => {
         setModalProject(project);
+        setMenuOpenId(null); // Close the 3-dot dropdown immediately for a snappy UI
 
-        const res = await api.get(`/projects/${selectedProjectId}/members`);
+        try {
+            // ✨ FIX: Use project.projectId instead of selectedProjectId!
+            const [projectMembersRes, allMembersRes] = await Promise.all([
+                api.get(`/projects/${project.projectId}/members`),
+                api.get(`/members`),
+            ]);
 
-        // compute candidates not in project
-        const currentIds = res.data?.map((m) => m.memberId) || [];
-        const candidates = allMembers.filter(
-            (m) => !currentIds.includes(m.memberId),
-        );
-        setCandidateMembers(candidates);
-        setSelectedCandidates([]);
-        setMenuOpenId(null);
+            const freshAllMembers = allMembersRes.data || [];
+            setAllMembers(freshAllMembers); // Keep in state for backup
+
+            // Compute candidates not in the project using the FRESH data
+            const currentIds =
+                projectMembersRes.data?.map((m) => m.memberId) || [];
+            const candidates = freshAllMembers.filter(
+                (m) => !currentIds.includes(m.memberId),
+            );
+
+            setCandidateMembers(candidates);
+            setSelectedCandidates([]);
+        } catch (error) {
+            console.error("Failed to load members for modal", error);
+            // Fallback in case of error
+            setCandidateMembers([]);
+        }
     };
 
     const handleUpdateMembers = async () => {
