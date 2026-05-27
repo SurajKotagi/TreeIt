@@ -39,7 +39,12 @@ import { showError, showSuccess } from "./utility/ToastNotofication";
 import "reactflow/dist/style.css";
 import "react-quill/dist/quill.snow.css";
 import { FaBars } from "react-icons/fa";
-import { FaSave, FaDownload, FaCheckCircle } from "react-icons/fa"; // Ensure these are imported!
+import {
+    FaSave,
+    FaDownload,
+    FaCheckCircle,
+    FaSignOutAlt,
+} from "react-icons/fa"; // Ensure these are imported!
 
 const imageWidth = 1024;
 const imageHeight = 768;
@@ -90,6 +95,14 @@ const Content = ({ selectedProjectId, projectName }) => {
     const [saveStatus, setSaveStatus] = useState("Saved"); // "Save", "Saving...", "Saved"
     // ✨ ADD THIS NEW STATE: Acts as a lock to prevent bad saves
     const [isFetchingGraph, setIsFetchingGraph] = useState(true);
+
+    // Handle user sign out
+    const handleSignOut = () => {
+        if (window.confirm("Are you sure you want to sign out?")) {
+            localStorage.clear(); // Clears memberId, username, etc.
+            window.location.href = "/"; // Redirects to your login page (change to "/login" if needed)
+        }
+    };
 
     // ✨ NEW: The Autosave Engine
     useEffect(() => {
@@ -760,7 +773,7 @@ const Content = ({ selectedProjectId, projectName }) => {
                 style={{
                     transition: "transform 0.3s ease-in-out",
                     transform: isSidebarOpen
-                        ? "translateX(-45%)"
+                        ? "translateX(-25%)"
                         : "translateX(0px)",
                 }}
             >
@@ -799,6 +812,17 @@ const Content = ({ selectedProjectId, projectName }) => {
                 >
                     <FaDownload className="text-gray-400 group-hover:text-indigo-500 transition-colors" />{" "}
                     Export
+                </motion.button>
+
+                {/* ✨ NEW: Sign Out Button */}
+                <motion.button
+                    onClick={handleSignOut}
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.97 }}
+                    className="group flex items-center justify-center gap-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-700 hover:text-red-600 hover:bg-red-50 hover:border-red-200 px-4 py-2.5 rounded-xl font-medium transition-all shadow-sm"
+                >
+                    <FaSignOutAlt className="text-gray-400 group-hover:text-red-500 transition-colors" />{" "}
+                    Sign Out
                 </motion.button>
             </Panel>
 
