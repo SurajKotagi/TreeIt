@@ -30,7 +30,7 @@ import RectangularNode from "./node/RectangularNode";
 
 import { v4 as uuidv4 } from "uuid";
 import { toPng } from "html-to-image";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 import api from "./utility/BaseAPI";
 import { useGlobalContext } from "./utility/SidebarSlide";
@@ -44,6 +44,7 @@ import {
     FaDownload,
     FaCheckCircle,
     FaSignOutAlt,
+    FaChevronLeft,
 } from "react-icons/fa"; // Ensure these are imported!
 
 const imageWidth = 1024;
@@ -95,6 +96,7 @@ const Content = ({ selectedProjectId, projectName }) => {
     const [saveStatus, setSaveStatus] = useState("Saved"); // "Save", "Saving...", "Saved"
     // ✨ ADD THIS NEW STATE: Acts as a lock to prevent bad saves
     const [isFetchingGraph, setIsFetchingGraph] = useState(true);
+    const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
 
     // Handle user sign out
     const handleSignOut = () => {
@@ -713,8 +715,8 @@ const Content = ({ selectedProjectId, projectName }) => {
         >
             {/* Rightside panel */}
             <RightsidePanel
-                isSidebarOpen={isSidebarOpen}
-                closeSidebar={closeSidebar}
+                isOpen={isRightPanelOpen}
+                closePanel={() => setIsRightPanelOpen(false)}
                 projectMembers={projectMembers}
                 newNodeInput={newNodeInput}
                 setNewNodeInput={setNewNodeInput}
@@ -772,8 +774,8 @@ const Content = ({ selectedProjectId, projectName }) => {
                 className="mt-5 mr-5 flex gap-3 z-40"
                 style={{
                     transition: "transform 0.3s ease-in-out",
-                    transform: isSidebarOpen
-                        ? "translateX(-25%)"
+                    transform: isRightPanelOpen
+                        ? "translateX(-340px)"
                         : "translateX(0px)",
                 }}
             >
@@ -824,6 +826,22 @@ const Content = ({ selectedProjectId, projectName }) => {
                     <FaSignOutAlt className="text-gray-400 group-hover:text-red-500 transition-colors" />{" "}
                     Sign Out
                 </motion.button>
+
+                {/* ✨ NEW: Button to re-open the Right Panel when it's closed */}
+                <AnimatePresence>
+                    {!isRightPanelOpen && (
+                        <motion.button
+                            initial={{ opacity: 0, scale: 0.8, x: 20 }}
+                            animate={{ opacity: 1, scale: 1, x: 0 }}
+                            exit={{ opacity: 0, scale: 0.8, x: 20 }}
+                            onClick={() => setIsRightPanelOpen(true)}
+                            className="flex items-center justify-center w-10 h-10 ml-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full shadow-sm transition-all"
+                            title="Open Task Configurator"
+                        >
+                            <FaChevronLeft size={14} />
+                        </motion.button>
+                    )}
+                </AnimatePresence>
             </Panel>
 
             {/* ✨ MOVED TO BOTTOM-LEFT SAFE ZONE ✨ */}
@@ -840,8 +858,8 @@ const Content = ({ selectedProjectId, projectName }) => {
                 style={{
                     transition: "transform 0.3s ease-in-out",
                     // Changed from -340px to -320px to match the w-80 sidebar perfectly!
-                    transform: isSidebarOpen
-                        ? "translateX(-45%)"
+                    transform: isRightPanelOpen
+                        ? "translateX(-340px)"
                         : "translateX(0px)",
                 }}
                 nodeBorderRadius={8}
@@ -900,9 +918,7 @@ const ReactFlowProviderContent = ({ selectedProjectId, projectName }) => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5 }}
-                className={`flex flex-col h-[calc(97vh-74px)] overflow-x-hidden ${
-                    isSidebarOpen ? "mr-64" : ""
-                }`}
+                className="flex flex-col h-screen flex-1 w-full min-w-0 overflow-hidden relative"
             >
                 <Content
                     selectedProjectId={selectedProjectId}

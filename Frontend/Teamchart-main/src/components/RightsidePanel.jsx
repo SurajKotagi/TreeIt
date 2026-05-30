@@ -25,8 +25,8 @@ const CustomDateInput = forwardRef(({ value, onClick }, ref) => (
 ));
 
 const RightsidePanel = ({
-    isSidebarOpen,
-    closeSidebar,
+    isOpen,
+    closePanel,
     projectMembers,
     newNodeInput,
     setNewNodeInput,
@@ -50,7 +50,7 @@ const RightsidePanel = ({
 
     return (
         <AnimatePresence>
-            {isSidebarOpen && (
+            {isOpen && (
                 <motion.div
                     initial={{ x: 300, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
@@ -61,7 +61,7 @@ const RightsidePanel = ({
                     <motion.div className="relative flex flex-col w-80 h-full px-6 py-8 bg-white shadow-2xl border-l border-gray-100 font-poppins">
                         {/* Close Button */}
                         <button
-                            onClick={closeSidebar}
+                            onClick={closePanel}
                             className="absolute top-4 left-[-1.5rem] bg-white border border-gray-200 p-2 rounded-full shadow-md text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
                         >
                             <FaChevronRight className="w-4 h-4" />
