@@ -28,4 +28,17 @@ public class EmailService {
         );
         mailSender.send(message);
     }
+
+    public void sendOtpEmail(String toEmail, String otp) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(toEmail);
+        message.setSubject("Your OTP for Registration");
+        message.setText(
+                "Hello,\n\n" +
+                "Your OTP for registration is: " + otp + "\n" +
+                "This OTP will expire in 5 minutes.\n\n" +
+                "Regards,\nTreeIt Team"
+        );
+        mailSender.send(message);
+    }
 }

@@ -7,6 +7,7 @@ import {
     FaLock,
     FaUser,
     FaUserCog,
+    FaKey,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import CustomDropdown from "../components/ui/CustomDropdown";
@@ -19,6 +20,7 @@ import {
 } from "../components/utility/ToastNotofication";
 import registerImage from "../images/Register.gif";
 import "../style/Register.css";
+import { useGoogleLogin } from "@react-oauth/google";
 
 function Register() {
     const [form, setForm] = useState({
@@ -27,9 +29,59 @@ function Register() {
         mail: "",
         employeeId: "",
         role: "User",
+        otp: "",
     });
     const [message, setMessage] = useState("");
+    const [otpRequested, setOtpRequested] = useState(false);
+    const [loadingOtp, setLoadingOtp] = useState(false);
     const navigate = useNavigate();
+
+    const googleLogin = useGoogleLogin({
+        onSuccess: async (tokenResponse) => {
+            try {
+                const userInfo = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+                    headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+                }).then(res => res.json());
+
+                const res = await api.post("/auth/google", {
+                    mail: userInfo.email,
+                    name: userInfo.name,
+                });
+
+                if (res.status === 200 && typeof res.data === "number") {
+                    showSuccess("Registered and logged in with Google!");
+                    navigate("/login");
+                } else {
+                    showError("Unexpected response from server.");
+                }
+            } catch (err) {
+                showError("Google Registration failed. Please try again.");
+            }
+        },
+        onError: errorResponse => showError("Google Registration failed."),
+    });
+
+    const handleRequestOtp = async (e) => {
+        e.preventDefault();
+        if (!form.mail) {
+            showInfo("Please enter an email address first.");
+            return;
+        }
+        setLoadingOtp(true);
+        try {
+            const res = await api.post("/auth/request-otp", { mail: form.mail });
+            if (res.data === "Mail already exists") {
+                showInfo(res.data);
+            } else {
+                showSuccess("OTP sent to your email!");
+                setOtpRequested(true);
+            }
+        } catch (error) {
+            showError(error.response?.data || "Failed to send OTP. Server busy.");
+        } finally {
+            setLoadingOtp(false);
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -49,8 +101,8 @@ function Register() {
                 showSuccess(res.data);
                 navigate("/login");
             }
-        } catch {
-            showError("Registration failed, Server busy");
+        } catch (error) {
+            showError(error.response?.data || "Registration failed, Server busy");
         }
     };
 
@@ -131,7 +183,7 @@ function Register() {
 
                     <motion.form
                         className="register-form"
-                        onSubmit={handleSubmit}
+                        onSubmit={otpRequested ? handleSubmit : handleRequestOtp}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.5, duration: 0.5 }}
@@ -151,6 +203,7 @@ function Register() {
                                     setForm({ ...form, mail: e.target.value })
                                 }
                                 className="register-input"
+                                disabled={otpRequested}
                             />
                         </motion.div>
 
@@ -172,6 +225,7 @@ function Register() {
                                     })
                                 }
                                 className="register-input"
+                                disabled={otpRequested}
                             />
                         </motion.div>
 
@@ -193,6 +247,7 @@ function Register() {
                                     })
                                 }
                                 className="register-input"
+                                disabled={otpRequested}
                             />
                         </motion.div>
 
@@ -214,6 +269,7 @@ function Register() {
                                     })
                                 }
                                 className="register-input"
+                                disabled={otpRequested}
                             />
                         </motion.div>
 
@@ -233,26 +289,94 @@ function Register() {
                             />
                         </motion.div>
 
-                        <motion.button
-                            className="register-button"
-                            type="submit"
-                            initial={{ y: 20, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            transition={{ delay: 1.1, duration: 0.4 }}
-                            whileHover={{ scale: 1.03 }}
-                            whileTap={{ scale: 0.97 }}
-                        >
-                            <span className="button-text">Register</span>
-                            <span className="button-icon">
-                                <FaArrowRight />
-                            </span>
-                        </motion.button>
+                        {otpRequested && (
+                            <motion.div
+                                className="input-container"
+                                initial={{ x: -20, opacity: 0 }}
+                                animate={{ x: 0, opacity: 1 }}
+                                transition={{ delay: 0.3, duration: 0.3 }}
+                            >
+                                <FaKey className="input-icon" />
+                                <input
+                                    type="text"
+                                    placeholder="Enter OTP"
+                                    value={form.otp}
+                                    onChange={(e) =>
+                                        setForm({
+                                            ...form,
+                                            otp: e.target.value,
+                                        })
+                                    }
+                                    className="register-input"
+                                />
+                            </motion.div>
+                        )}
+
+                        {!otpRequested ? (
+                            <>
+                                <motion.button
+                                    className="register-button"
+                                    type="submit"
+                                    initial={{ y: 20, opacity: 0 }}
+                                    animate={{ y: 0, opacity: 1 }}
+                                    transition={{ delay: 1.1, duration: 0.4 }}
+                                    whileHover={{ scale: 1.03 }}
+                                    whileTap={{ scale: 0.97 }}
+                                    disabled={loadingOtp}
+                                >
+                                    <span className="button-text">
+                                        {loadingOtp ? "Sending OTP..." : "Send OTP"}
+                                    </span>
+                                    <span className="button-icon">
+                                        <FaArrowRight />
+                                    </span>
+                                </motion.button>
+                                
+                                <motion.div
+                                    className="register-separator"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    transition={{ delay: 1.2, duration: 0.4 }}
+                                >
+                                    Or
+                                </motion.div>
+
+                                <motion.button
+                                    type="button"
+                                    className="google-register-button"
+                                    onClick={() => googleLogin()}
+                                    initial={{ y: 20, opacity: 0 }}
+                                    animate={{ y: 0, opacity: 1 }}
+                                    transition={{ delay: 1.3, duration: 0.4 }}
+                                    whileHover={{ scale: 1.03 }}
+                                    whileTap={{ scale: 0.97 }}
+                                >
+                                    <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="google-icon" />
+                                    <span>Register with Google</span>
+                                </motion.button>
+                            </>
+                        ) : (
+                            <motion.button
+                                className="register-button"
+                                type="submit"
+                                initial={{ y: 20, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                transition={{ delay: 0.4, duration: 0.4 }}
+                                whileHover={{ scale: 1.03 }}
+                                whileTap={{ scale: 0.97 }}
+                            >
+                                <span className="button-text">Register</span>
+                                <span className="button-icon">
+                                    <FaArrowRight />
+                                </span>
+                            </motion.button>
+                        )}
 
                         <motion.div
                             className="server-note"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            transition={{ delay: 1.2, duration: 0.5 }}
+                            transition={{ delay: 1.4, duration: 0.5 }}
                         >
                             <p>
                                 <strong>Note:</strong> This backend is hosted on
@@ -277,7 +401,7 @@ function Register() {
                             className="signup-prompt"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            transition={{ delay: 1.2, duration: 0.4 }}
+                            transition={{ delay: 1.5, duration: 0.4 }}
                         >
                             Already have an account?{" "}
                             <a href="/login">Sign In</a>

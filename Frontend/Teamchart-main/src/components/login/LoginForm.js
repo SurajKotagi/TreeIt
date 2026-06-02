@@ -6,11 +6,46 @@ import { loginUser } from "../../services/authService";
 import { showSuccess, showError } from "../utility/ToastNotofication";
 import Loading from "../ui/Loading";
 import { motion } from "framer-motion";
+import { useGoogleLogin } from "@react-oauth/google";
+import api from "../utility/BaseAPI";
 
 function LoginForm({ onLogin }) {
     const [form, setForm] = useState({ username: "", password: "" });
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
+
+    const googleLogin = useGoogleLogin({
+        onSuccess: async (tokenResponse) => {
+            setIsLoading(true);
+            try {
+                // We send the access token to backend, or for simplicity, we can fetch user info here
+                // For a proper implementation, backend should verify the token.
+                const userInfo = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+                    headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+                }).then(res => res.json());
+
+                const res = await api.post("/auth/google", {
+                    mail: userInfo.email,
+                    name: userInfo.name,
+                });
+
+                if (res.status === 200 && typeof res.data === "number") {
+                    localStorage.setItem("memberId", res.data);
+                    localStorage.setItem("username", userInfo.name);
+                    onLogin(res.data);
+                    showSuccess("Logged in as " + userInfo.name);
+                    navigate("/home");
+                } else {
+                    showError("Unexpected response from server.");
+                }
+            } catch (err) {
+                showError("Google Login failed. Please try again.");
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        onError: errorResponse => showError("Google Login failed."),
+    });
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -150,6 +185,29 @@ function LoginForm({ onLogin }) {
                     </motion.button>
 
                     <motion.div
+                        className="login-separator"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 1.0, duration: 0.4 }}
+                    >
+                        Or
+                    </motion.div>
+
+                    <motion.button
+                        type="button"
+                        className="google-login-button"
+                        onClick={() => googleLogin()}
+                        initial={{ y: 20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ delay: 1.1, duration: 0.4 }}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                    >
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="google-icon" />
+                        <span>Continue with Google</span>
+                    </motion.button>
+
+                    <motion.div
                         className="server-note"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -167,7 +225,7 @@ function LoginForm({ onLogin }) {
                         className="signup-prompt"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        transition={{ delay: 1, duration: 0.4 }}
+                        transition={{ delay: 1.3, duration: 0.4 }}
                     >
                         Don't have an account?{" "}
                         <Link to="/" className="signup-link">
