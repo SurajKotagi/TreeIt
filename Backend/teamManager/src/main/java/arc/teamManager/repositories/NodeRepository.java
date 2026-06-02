@@ -14,6 +14,8 @@ import arc.teamManager.entities.GraphNode;
 @Repository
 public interface NodeRepository extends JpaRepository<GraphNode, String> {
     List<GraphNode> findByProjectId(String projectId);
+    
+    List<GraphNode> findByAssignedTo(String assignedTo);
 
     @Modifying
     @Transactional

@@ -32,6 +32,18 @@ const LeftSidebar = ({
     const [allMembers, setAllMembers] = useState([]);
     const [modalProject, setModalProject] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
+    const [analytics, setAnalytics] = useState(null);
+    const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+
+    useEffect(() => {
+        if (isProfileModalOpen && username) {
+            setLoadingAnalytics(true);
+            api.get(`/members/${username}/analytics`)
+                .then(res => setAnalytics(res.data))
+                .catch(err => console.error("Failed to fetch analytics:", err))
+                .finally(() => setLoadingAnalytics(false));
+        }
+    }, [isProfileModalOpen, username]);
 
     const availableCandidates = allMembers.filter(
         (member) => !modalProject?.members?.some((m) => m._id === member._id),
@@ -542,7 +554,7 @@ const LeftSidebar = ({
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.9, opacity: 0, y: 20 }}
                             transition={{ type: "spring", damping: 25 }}
-                            className="bg-white p-8 rounded-2xl w-[90%] max-w-[500px] shadow-2xl relative"
+                            className="bg-white p-8 rounded-2xl w-[90%] max-w-[700px] shadow-2xl relative"
                         >
                             <motion.button
                                 className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 transition-colors"
@@ -553,61 +565,115 @@ const LeftSidebar = ({
                                 <FaTimes size={20} />
                             </motion.button>
 
-                            <motion.div
-                                className="flex flex-col items-center mb-6"
-                                initial={{ y: 20, opacity: 0 }}
-                                animate={{ y: 0, opacity: 1 }}
-                                transition={{ delay: 0.1 }}
-                            >
-                                {/* Large Fun Emoji Avatar for Modal */}
-                                <div className="w-24 h-24 rounded-2xl overflow-hidden border border-gray-200 shadow-lg mb-4">
-                                    <img
-                                        src={avatar}
-                                        alt="Current Avatar"
-                                        className="w-full h-full object-cover"
-                                    />
-                                </div>
-
-                                <h2 className="text-2xl font-bold text-gray-800 mb-1">
-                                    {username}
-                                </h2>
-                                <p className="text-gray-500 text-sm">
-                                    {localStorage.getItem("email") ||
-                                        "Email not set"}
-                                </p>
-                            </motion.div>
-
-                            <motion.div
-                                className="bg-gray-50 rounded-xl p-5 mb-6 shadow-inner"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ delay: 0.2 }}
-                            >
-                                <h3 className="text-lg font-semibold mb-3 text-blue-600">
-                                    Analytics
-                                </h3>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-white p-3 rounded-lg shadow-sm">
-                                        <p className="text-gray-500 text-sm">
-                                            Total Projects
-                                        </p>
-                                        <p className="text-2xl font-bold text-gray-800">
-                                            {projects.length}
-                                        </p>
+                            <div className="flex flex-col md:flex-row gap-8">
+                                <motion.div
+                                    className="flex flex-col items-center flex-shrink-0 md:w-1/3"
+                                    initial={{ x: -20, opacity: 0 }}
+                                    animate={{ x: 0, opacity: 1 }}
+                                    transition={{ delay: 0.1 }}
+                                >
+                                    {/* Large Fun Emoji Avatar for Modal */}
+                                    <div className="w-32 h-32 rounded-2xl overflow-hidden border border-gray-200 shadow-lg mb-4">
+                                        <img
+                                            src={avatar}
+                                            alt="Current Avatar"
+                                            className="w-full h-full object-cover"
+                                        />
                                     </div>
-                                    <div className="bg-white p-3 rounded-lg shadow-sm">
-                                        <p className="text-gray-500 text-sm">
-                                            Member ID
-                                        </p>
-                                        <p className="text-sm font-medium text-gray-800 truncate">
-                                            {localStorage.getItem("memberId")}
-                                        </p>
+
+                                    <h2 className="text-2xl font-bold text-gray-800 mb-1 text-center">
+                                        {username}
+                                    </h2>
+                                    <p className="text-gray-500 text-sm text-center mb-4">
+                                        {localStorage.getItem("email") ||
+                                            "Email not set"}
+                                    </p>
+                                    
+                                    <div className="w-full bg-blue-50 rounded-xl p-4 text-center border border-blue-100">
+                                        <p className="text-xs text-blue-500 uppercase tracking-wider font-bold mb-1">Member ID</p>
+                                        <p className="text-sm font-mono text-blue-800 truncate">{localStorage.getItem("memberId")}</p>
                                     </div>
-                                </div>
-                            </motion.div>
+                                </motion.div>
+
+                                <motion.div
+                                    className="flex-grow flex flex-col"
+                                    initial={{ x: 20, opacity: 0 }}
+                                    animate={{ x: 0, opacity: 1 }}
+                                    transition={{ delay: 0.2 }}
+                                >
+                                    <h3 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2">
+                                        Performance Analytics
+                                    </h3>
+                                    
+                                    {loadingAnalytics ? (
+                                        <div className="flex-grow flex justify-center items-center">
+                                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col gap-4">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="bg-gradient-to-br from-green-50 to-emerald-100 p-4 rounded-xl shadow-sm border border-green-200 flex flex-col justify-center items-center">
+                                                    <p className="text-green-700 text-sm font-semibold mb-1">Tasks Completed</p>
+                                                    <p className="text-3xl font-black text-green-600">{analytics?.tasksCompleted || 0}</p>
+                                                </div>
+                                                <div className="bg-gradient-to-br from-amber-50 to-yellow-100 p-4 rounded-xl shadow-sm border border-amber-200 flex flex-col justify-center items-center">
+                                                    <p className="text-amber-700 text-sm font-semibold mb-1">Tasks Pending</p>
+                                                    <p className="text-3xl font-black text-amber-600">{analytics?.tasksPending || 0}</p>
+                                                </div>
+                                                <div className="bg-gradient-to-br from-red-50 to-rose-100 p-4 rounded-xl shadow-sm border border-red-200 flex flex-col justify-center items-center">
+                                                    <p className="text-red-700 text-sm font-semibold mb-1 text-center">Overdue / Long Pending</p>
+                                                    <p className="text-3xl font-black text-red-600">{analytics?.tasksPendingForLong || 0}</p>
+                                                </div>
+                                                <div className="bg-gradient-to-br from-indigo-50 to-blue-100 p-4 rounded-xl shadow-sm border border-indigo-200 flex flex-col justify-center items-center">
+                                                    <p className="text-indigo-700 text-sm font-semibold mb-1">Total Projects</p>
+                                                    <p className="text-3xl font-black text-indigo-600">{projects.length}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 mt-2 shadow-inner">
+                                                <h4 className="text-sm font-semibold text-gray-600 mb-3">Activity Heatmap (Last 14 Days)</h4>
+                                                <div className="flex items-end justify-between h-20 gap-1">
+                                                    {Array.from({ length: 14 }).map((_, i) => {
+                                                        const d = new Date();
+                                                        d.setDate(d.getDate() - (13 - i));
+                                                        const dateStr = d.toISOString().split('T')[0];
+                                                        const count = analytics?.activityHeatMap?.[dateStr] || 0;
+                                                        
+                                                        // Max height calc
+                                                        const maxCount = Math.max(...Object.values(analytics?.activityHeatMap || {0:1}), 1);
+                                                        const heightPercent = count > 0 ? Math.max((count / maxCount) * 100, 15) : 5;
+                                                        
+                                                        let colorClass = "bg-gray-200";
+                                                        if (count > 0) colorClass = "bg-blue-300";
+                                                        if (count > 2) colorClass = "bg-blue-500";
+                                                        if (count > 5) colorClass = "bg-blue-700";
+
+                                                        return (
+                                                            <div key={i} className="flex flex-col items-center flex-1 group relative">
+                                                                <div 
+                                                                    className={`w-full rounded-t-sm ${colorClass} transition-all duration-300 group-hover:opacity-80`} 
+                                                                    style={{ height: `${heightPercent}%` }}
+                                                                ></div>
+                                                                {/* Tooltip */}
+                                                                <div className="opacity-0 group-hover:opacity-100 absolute -top-8 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10 pointer-events-none transition-opacity">
+                                                                    {count} tasks on {d.toLocaleDateString(undefined, {month: 'short', day: 'numeric'})}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                                <div className="flex justify-between mt-2 text-[10px] text-gray-400 font-medium">
+                                                    <span>14 days ago</span>
+                                                    <span>Today</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </motion.div>
+                            </div>
 
                             <motion.div
-                                className="flex justify-end"
+                                className="flex justify-end mt-6 pt-4 border-t"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 transition={{ delay: 0.3 }}
@@ -616,9 +682,9 @@ const LeftSidebar = ({
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
                                     onClick={() => setIsProfileModalOpen(false)}
-                                    className="bg-blue-600 text-white px-6 py-2 rounded-xl hover:bg-blue-700 transition-colors shadow-md"
+                                    className="bg-gray-800 text-white px-8 py-2.5 rounded-xl hover:bg-gray-900 transition-colors shadow-lg font-medium"
                                 >
-                                    Close
+                                    Close Profile
                                 </motion.button>
                             </motion.div>
                         </motion.div>
