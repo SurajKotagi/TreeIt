@@ -34,7 +34,8 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import api from "./utility/BaseAPI";
 import { useGlobalContext } from "./utility/SidebarSlide";
-import { showError, showSuccess } from "./utility/ToastNotofication";
+import { showError, showSuccess, showLog } from "./utility/ToastNotofication";
+import ActivityLogModal from "./ui/ActivityLogModal";
 
 import "reactflow/dist/style.css";
 import "react-quill/dist/quill.snow.css";
@@ -45,6 +46,7 @@ import {
     FaCheckCircle,
     FaSignOutAlt,
     FaChevronLeft,
+    FaHistory
 } from "react-icons/fa"; // Ensure these are imported!
 
 const imageWidth = 1024;
@@ -97,6 +99,23 @@ const Content = ({ selectedProjectId, projectName }) => {
     // ✨ ADD THIS NEW STATE: Acts as a lock to prevent bad saves
     const [isFetchingGraph, setIsFetchingGraph] = useState(true);
     const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
+    const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
+
+    // Activity Log Handler
+    const logActivity = async (actionMessage) => {
+        if (!selectedProjectId) return;
+        const currentUsername = localStorage.getItem("username") || "User";
+        try {
+            await api.post("/logs/", {
+                projectId: selectedProjectId,
+                username: currentUsername,
+                actionMessage,
+            });
+            showLog(`${currentUsername} ${actionMessage}`);
+        } catch (error) {
+            console.error("Failed to log activity", error);
+        }
+    };
 
     // Handle user sign out
     const handleSignOut = () => {
@@ -385,6 +404,7 @@ const Content = ({ selectedProjectId, projectName }) => {
             node: newNode,
         });
         showSuccess("Node created successfully");
+        logActivity(`created a new task '${newNodeInput.task}'`);
     };
 
     // Save graph data to backend without alert
@@ -521,6 +541,13 @@ const Content = ({ selectedProjectId, projectName }) => {
                 ),
             );
             showSuccess("Node marked as completed successfully!");
+            
+            // Log it
+            const node = nodes.find(n => n.id === nodeId);
+            if (node) {
+                logActivity(`completed task '${node.data.task}'`);
+            }
+            
         } catch (error) {
             if (error.response && error.response.data) {
                 showError(
@@ -543,6 +570,11 @@ const Content = ({ selectedProjectId, projectName }) => {
         const res = await api.get(`/nodes/${nodeId}/todos`);
         setTodos(res.data);
         showSuccess("Added new todo");
+        
+        const node = nodes.find((n) => n.id === nodeId);
+        if (node) {
+            logActivity(`added a subtask '${newTask}' to '${node.data.task}'`);
+        }
     };
 
     // Change node status
@@ -595,6 +627,7 @@ const Content = ({ selectedProjectId, projectName }) => {
                     : n,
             ),
         );
+        logActivity(`changed status of task '${node.data.task}' to ${newStatus}`);
     };
 
     // Update stuck reason
@@ -816,6 +849,17 @@ const Content = ({ selectedProjectId, projectName }) => {
                     Export
                 </motion.button>
 
+                {/* Logs Button */}
+                <motion.button
+                    onClick={() => setIsLogsModalOpen(true)}
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.97 }}
+                    className="group flex items-center justify-center gap-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300 px-4 py-2.5 rounded-xl font-medium transition-all shadow-sm"
+                >
+                    <FaHistory className="text-gray-400 group-hover:text-indigo-500 transition-colors" />{" "}
+                    Logs
+                </motion.button>
+
                 {/* ✨ NEW: Sign Out Button */}
                 <motion.button
                     onClick={handleSignOut}
@@ -884,7 +928,13 @@ const Content = ({ selectedProjectId, projectName }) => {
             />
 
             {/* Node properties on right click */}
-            {menu && <NodeProperties onClick={onPaneClick} {...menu} />}
+            {menu && <NodeProperties onClick={onPaneClick} logActivity={logActivity} {...menu} />}
+
+            <ActivityLogModal
+                isOpen={isLogsModalOpen}
+                onClose={() => setIsLogsModalOpen(false)}
+                projectId={selectedProjectId}
+            />
 
             <Nodecard
                 show={showModal}

@@ -10,6 +10,7 @@ export default function NodeProperties({
     left,
     right,
     bottom,
+    logActivity,
     ...props
 }) {
     const {
@@ -34,6 +35,9 @@ export default function NodeProperties({
     };
 
     const deleteNode = useCallback(() => {
+        // Get the node details to log
+        const nodeToDelete = getNode(id);
+
         // 1. Remove the node from the local ReactFlow state
         setNodes((nodes) => nodes.filter((node) => node.id !== id));
 
@@ -42,10 +46,14 @@ export default function NodeProperties({
             edges.filter((edge) => edge.source !== id && edge.target !== id),
         );
 
+        if (nodeToDelete && logActivity) {
+            logActivity(`deleted task '${nodeToDelete.data.task || 'Unnamed Task'}'`);
+        }
+
         // 3. We NO LONGER call the backend delete API here.
         // The Autosave useEffect in GraphPage will automatically detect this state change
         // and send the new, smaller lists to the /save endpoint.
-    }, [id, setNodes, setEdges]);
+    }, [id, setNodes, setEdges, getNode, logActivity]);
 
     return (
         <div

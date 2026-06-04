@@ -54,3 +54,25 @@ export const showInfo = (message) =>
     },
     icon: "ℹ️",
   });
+
+export const showLog = (message) =>
+  toast(message, {
+    position: "bottom-left",
+    autoClose: 4000,
+    hideProgressBar: true,
+    closeOnClick: true,
+    pauseOnHover: true,
+    draggable: true,
+    style: {
+      ...baseStyle,
+      background: "rgba(15, 23, 42, 0.9)",
+      color: "#f8fafc",
+      backdropFilter: "blur(8px)",
+      border: "1px solid rgba(255,255,255,0.1)",
+      fontSize: "14px",
+      padding: "10px 16px",
+      minHeight: "40px",
+      marginBottom: "10px",
+    },
+    icon: "💬",
+  });
