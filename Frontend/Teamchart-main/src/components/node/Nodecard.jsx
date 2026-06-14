@@ -80,10 +80,24 @@ const Nodecard = ({
     const loggedInMember = localStorage.getItem("username");
     const loggedInMemberId = localStorage.getItem("memberId");
 
-    const statusOptions = ["Unpicked", "Pending", "Stuck"];
-    const currentStatusDisplay = status
-        ? status.charAt(0).toUpperCase() + status.slice(1)
-        : "Unpicked";
+    // ✨ CHANGED: Added "Busy" to the options
+    const statusOptions = [
+        "Unpicked",
+        "In Need",
+        "Working",
+        "Busy",
+        "Pending",
+        "Stuck",
+    ];
+
+    // We need to handle "In Need" carefully because it has a space
+    const formatStatusDisplay = (statusStr) => {
+        if (!statusStr) return "Unpicked";
+        if (statusStr.toLowerCase() === "in need") return "In Need";
+        return statusStr.charAt(0).toUpperCase() + statusStr.slice(1);
+    };
+
+    const currentStatusDisplay = formatStatusDisplay(status);
 
     return (
         <AnimatePresence>

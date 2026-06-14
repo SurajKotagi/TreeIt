@@ -8,6 +8,9 @@ import {
     FaRegCircle,
     FaCalendarAlt,
     FaComment,
+    FaHandsHelping,
+    FaTools,
+    FaBriefcase,
 } from "react-icons/fa";
 
 const RectangularNode = ({ data }) => {
@@ -92,11 +95,31 @@ const RectangularNode = ({ data }) => {
             border: "border-amber-500",
             icon: <FaExclamationCircle />,
         },
+        // ✨ NEW STATUS: In Need (Purple)
+        "in need": {
+            text: "text-purple-500",
+            bg: "bg-purple-500",
+            border: "border-purple-500",
+            icon: <FaHandsHelping />,
+        },
+        // ✨ NEW STATUS: Working (Teal)
+        working: {
+            text: "text-teal-500",
+            bg: "bg-teal-500",
+            border: "border-teal-500",
+            icon: <FaTools />,
+        },
         unpicked: {
             text: "text-gray-400",
             bg: "bg-gray-400",
             border: "border-gray-300",
             icon: <FaRegCircle />,
+        },
+        busy: {
+            text: "text-orange-500",
+            bg: "bg-orange-500",
+            border: "border-orange-500",
+            icon: <FaBriefcase />,
         },
     };
 

@@ -46,7 +46,7 @@ import {
     FaCheckCircle,
     FaSignOutAlt,
     FaChevronLeft,
-    FaHistory
+    FaHistory,
 } from "react-icons/fa"; // Ensure these are imported!
 
 const imageWidth = 1024;
@@ -541,13 +541,12 @@ const Content = ({ selectedProjectId, projectName }) => {
                 ),
             );
             showSuccess("Node marked as completed successfully!");
-            
+
             // Log it
-            const node = nodes.find(n => n.id === nodeId);
+            const node = nodes.find((n) => n.id === nodeId);
             if (node) {
                 logActivity(`completed task '${node.data.task}'`);
             }
-            
         } catch (error) {
             if (error.response && error.response.data) {
                 showError(
@@ -570,7 +569,7 @@ const Content = ({ selectedProjectId, projectName }) => {
         const res = await api.get(`/nodes/${nodeId}/todos`);
         setTodos(res.data);
         showSuccess("Added new todo");
-        
+
         const node = nodes.find((n) => n.id === nodeId);
         if (node) {
             logActivity(`added a subtask '${newTask}' to '${node.data.task}'`);
@@ -596,10 +595,14 @@ const Content = ({ selectedProjectId, projectName }) => {
             return;
         }
 
+        // Inside onStatusChange in GraphPage.jsx
         const colorMap = {
-            pending: "#3b82f6",
-            stuck: "#facc15",
-            completed: "#10b981",
+            pending: "#3b82f6", // Blue
+            stuck: "#facc15", // Amber
+            completed: "#10b981", // Green
+            "in need": "#a855f7", // Purple
+            working: "#14b8a6", // Teal
+            busy: "#f97316", // Orange ✨ NEW
         };
 
         setNodeColor(colorMap[newStatus] || "#ffffff");
@@ -627,7 +630,9 @@ const Content = ({ selectedProjectId, projectName }) => {
                     : n,
             ),
         );
-        logActivity(`changed status of task '${node.data.task}' to ${newStatus}`);
+        logActivity(
+            `changed status of task '${node.data.task}' to ${newStatus}`,
+        );
     };
 
     // Update stuck reason
@@ -900,19 +905,21 @@ const Content = ({ selectedProjectId, projectName }) => {
                 pannable
                 className="rounded-xl shadow-md overflow-hidden border border-gray-200 mb-5"
                 style={{
-                    transition: "transform 0.3s ease-in-out",
-                    // Changed from -340px to -320px to match the w-80 sidebar perfectly!
+                    transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                     transform: isRightPanelOpen
                         ? "translateX(-340px)"
                         : "translateX(0px)",
                 }}
                 nodeBorderRadius={8}
-                // ... rest of your code
+                // Down in your return block for the MiniMap
                 nodeColor={(node) => {
                     const statusColors = {
                         completed: "#10b981",
                         pending: "#3b82f6",
                         stuck: "#facc15",
+                        "in need": "#a855f7",
+                        working: "#14b8a6",
+                        busy: "#f97316", // Orange ✨ NEW
                         unpicked: "#94a3b8",
                     };
                     return statusColors[node.data?.status] || "#cbd5e1";
@@ -928,7 +935,13 @@ const Content = ({ selectedProjectId, projectName }) => {
             />
 
             {/* Node properties on right click */}
-            {menu && <NodeProperties onClick={onPaneClick} logActivity={logActivity} {...menu} />}
+            {menu && (
+                <NodeProperties
+                    onClick={onPaneClick}
+                    logActivity={logActivity}
+                    {...menu}
+                />
+            )}
 
             <ActivityLogModal
                 isOpen={isLogsModalOpen}
