@@ -201,6 +201,9 @@ const Content = ({ selectedProjectId, projectName }) => {
                         status: node.status,
                         stuckReason: node.stuckReason,
                         description: node.description,
+                        // ✨ NEW: Load the saved time metrics from the backend
+                        accumulatedTimeMs: node.accumulatedTimeMs || 0,
+                        lastActivatedAt: node.lastActivatedAt || null,
                     },
                 }));
 
@@ -424,6 +427,9 @@ const Content = ({ selectedProjectId, projectName }) => {
             description: node.data.description || "",
             posX: node.position.x,
             posY: node.position.y,
+            // ✨ NEW: Send the updated time metrics back to the database
+            accumulatedTimeMs: node.data.accumulatedTimeMs || 0,
+            lastActivatedAt: node.data.lastActivatedAt || null,
         }));
 
         const formattedEdges = edgesArg.map((edge) => ({
@@ -583,35 +589,44 @@ const Content = ({ selectedProjectId, projectName }) => {
         const currentUsername = localStorage.getItem("username");
         const node = nodes.find((n) => n.id === nodeId);
 
-        if (!node) {
-            showError("Node not found.");
-            return;
-        }
-
+        if (!node) return showError("Node not found.");
         if (node.data.assignedTo !== currentUsername) {
-            showError(
-                "You are not assigned to this node and cannot update its status.",
-            );
-            return;
+            return showError("You are not assigned to this node.");
         }
 
-        // Inside onStatusChange in GraphPage.jsx
         const colorMap = {
-            pending: "#3b82f6", // Blue
-            stuck: "#facc15", // Amber
-            completed: "#10b981", // Green
-            "in need": "#a855f7", // Purple
-            working: "#14b8a6", // Teal
-            busy: "#f97316", // Orange ✨ NEW
+            pending: "#3b82f6",
+            stuck: "#facc15",
+            completed: "#10b981",
+            "in need": "#a855f7",
+            working: "#14b8a6",
+            busy: "#f97316",
         };
+
+        const oldStatus = node.data.status || "unpicked";
+        const isOldStatusActive =
+            oldStatus === "working" || oldStatus === "in need";
+        const isNewStatusActive =
+            newStatus === "working" || newStatus === "in need";
+
+        const nowIso = new Date().toISOString();
+        let newAccumulatedTime = node.data.accumulatedTimeMs || 0;
+        let newLastActivatedAt = node.data.lastActivatedAt || null;
+
+        // If transitioning OUT of an active state, finalize the time chunk
+        if (isOldStatusActive && !isNewStatusActive && newLastActivatedAt) {
+            const timeSpentMs = new Date() - new Date(newLastActivatedAt);
+            newAccumulatedTime += timeSpentMs > 0 ? timeSpentMs : 0;
+            newLastActivatedAt = null; // Reset the stopwatch
+        }
+        // If transitioning INTO an active state, start the stopwatch
+        else if (!isOldStatusActive && isNewStatusActive) {
+            newLastActivatedAt = nowIso;
+        }
 
         setNodeColor(colorMap[newStatus] || "#ffffff");
         setStatus(newStatus);
-
-        // Clear stuck reason if status is not stuck
-        if (newStatus !== "stuck") {
-            setStuckReason("");
-        }
+        if (newStatus !== "stuck") setStuckReason("");
 
         setNodes((prevNodes) =>
             prevNodes.map((n) =>
@@ -621,6 +636,8 @@ const Content = ({ selectedProjectId, projectName }) => {
                           data: {
                               ...n.data,
                               status: newStatus,
+                              accumulatedTimeMs: newAccumulatedTime,
+                              lastActivatedAt: newLastActivatedAt,
                               stuckReason:
                                   newStatus === "stuck"
                                       ? n.data.stuckReason

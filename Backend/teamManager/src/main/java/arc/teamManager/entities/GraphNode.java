@@ -65,6 +65,14 @@ public class GraphNode {
 	@Column(name = "CREATED_TIME")
 	private String createdTime; // Store as ISO string since your frontend sends it this way
 
+	// ✨ NEW: Tracks total active time accumulated so far (in milliseconds)
+	@Column(name = "ACCUMULATED_TIME_MS")
+	private Long accumulatedTimeMs = 0L;
+
+	// ✨ NEW: Records the exact moment the task entered an "Active" state
+	@Column(name = "LAST_ACTIVATED_AT")
+	private String lastActivatedAt; // Store as ISO String
+
 	public String getCreatedTime() {
 		return createdTime;
 	}
@@ -176,4 +184,5 @@ public class GraphNode {
 	public void setTodos(List<Todo> todos) {
 		this.todos = todos;
 	}
+
 }

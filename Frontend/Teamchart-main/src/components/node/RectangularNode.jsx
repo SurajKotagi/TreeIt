@@ -16,24 +16,28 @@ import {
 const RectangularNode = ({ data }) => {
     const [progress, setProgress] = useState(0);
 
-    // 1. Calculate Elapsed Time for Bubble (Current Time - Assigned Time)
-    const getElapsedTime = (createdTime) => {
-        const startTime = createdTime || data.assignedAt;
-        if (!startTime) return { value: 0, label: "mins" };
+    // 1. Calculate Active Elapsed Time
+    const getActiveElapsedTime = () => {
+        const status = data.status || "unpicked";
+        const isActive = status === "working" || status === "in need";
 
-        const now = new Date();
-        const created = new Date(startTime);
-        const diffMs = now - created;
+        let totalMs = data.accumulatedTimeMs || 0;
 
-        if (diffMs < 0) return { value: 0, label: "mins" };
+        // If it's currently active, add the live ticking time
+        if (isActive && data.lastActivatedAt) {
+            const liveMs = new Date() - new Date(data.lastActivatedAt);
+            if (liveMs > 0) totalMs += liveMs;
+        }
 
-        const diffMins = Math.floor(diffMs / (1000 * 60));
+        if (totalMs === 0) return { value: 0, label: "mins" };
+
+        const diffMins = Math.floor(totalMs / (1000 * 60));
         if (diffMins < 60) return { value: diffMins, label: "mins" };
 
-        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffHours = Math.floor(totalMs / (1000 * 60 * 60));
         if (diffHours < 24) return { value: diffHours, label: "hours" };
 
-        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const diffDays = Math.floor(totalMs / (1000 * 60 * 60 * 24));
         return { value: diffDays, label: "days" };
     };
 
@@ -125,7 +129,7 @@ const RectangularNode = ({ data }) => {
 
     const currentStatus = data.status || "unpicked";
     const config = statusConfig[currentStatus] || statusConfig.unpicked;
-    const elapsed = getElapsedTime(data.createdTime);
+    const elapsed = getActiveElapsedTime();
 
     return (
         <div className="group bg-white rounded-xl shadow-lg border border-gray-100 min-w-[260px] max-w-[300px] relative transition-all hover:-translate-y-1 hover:shadow-xl duration-200 cursor-pointer">
