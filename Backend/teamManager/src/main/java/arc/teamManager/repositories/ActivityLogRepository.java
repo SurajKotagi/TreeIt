@@ -10,4 +10,5 @@ import arc.teamManager.entities.ActivityLog;
 @Repository
 public interface ActivityLogRepository extends JpaRepository<ActivityLog, Long> {
     List<ActivityLog> findByProjectIdOrderByTimestampDesc(String projectId);
+    List<ActivityLog> findByUsername(String username);
 }

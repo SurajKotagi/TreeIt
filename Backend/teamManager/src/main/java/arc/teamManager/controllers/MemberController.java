@@ -15,10 +15,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import arc.teamManager.entities.Member;
 import arc.teamManager.entities.GraphNode;
+import arc.teamManager.entities.ActivityLog;
 import arc.teamManager.repositories.MemberRepository;
 import arc.teamManager.repositories.NodeRepository;
+import arc.teamManager.repositories.ActivityLogRepository;
 import arc.teamManager.dto.MemberAnalyticsDTO;
-
 
 @RestController
 public class MemberController {
@@ -27,6 +28,9 @@ public class MemberController {
 
     @Autowired
     NodeRepository nodeRepository;
+
+    @Autowired
+    ActivityLogRepository activityLogRepository;
 
     @GetMapping("/members")
     public List<Member> getAllUsers() {
@@ -78,11 +82,14 @@ public class MemberController {
                     pendingForLong++;
                 }
             }
+        }
 
-            // Populate heatmap (based on createdTime)
-            if (node.getCreatedTime() != null) {
+        // Populate heatmap based on user's actual activity logs
+        List<ActivityLog> logs = activityLogRepository.findByUsername(username);
+        for (ActivityLog log : logs) {
+            if (log.getTimestamp() != null) {
                 try {
-                    String dateKey = node.getCreatedTime().substring(0, 10);
+                    String dateKey = log.getTimestamp().toLocalDate().toString(); // ISO format: YYYY-MM-DD
                     heatMap.put(dateKey, heatMap.getOrDefault(dateKey, 0) + 1);
                 } catch (Exception e) {
                     // ignore
