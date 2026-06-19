@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import api from "./utility/BaseAPI";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -34,13 +34,42 @@ const LeftSidebar = ({
     const [searchQuery, setSearchQuery] = useState("");
     const [analytics, setAnalytics] = useState(null);
     const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+    // ✨ NEW: Project Search State and Ref
+    const [projectSearchQuery, setProjectSearchQuery] = useState("");
+    const searchInputRef = useRef(null);
+
+    // ✨ UPDATED: Keyboard shortcut effect (Press Cmd+/ or Ctrl+/ to focus search)
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            // Check for Cmd+/ (Mac) or Ctrl+/ (Windows)
+            if (
+                (e.metaKey || e.ctrlKey) &&
+                e.key === "/" &&
+                document.activeElement.tagName !== "INPUT" &&
+                document.activeElement.tagName !== "TEXTAREA"
+            ) {
+                e.preventDefault();
+                searchInputRef.current?.focus();
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, []);
+
+    // ✨ NEW: Filter the projects based on the search query
+    const filteredProjects = projects.filter((project) =>
+        project.name.toLowerCase().includes(projectSearchQuery.toLowerCase()),
+    );
 
     useEffect(() => {
         if (isProfileModalOpen && username) {
             setLoadingAnalytics(true);
             api.get(`/members/${username}/analytics`)
-                .then(res => setAnalytics(res.data))
-                .catch(err => console.error("Failed to fetch analytics:", err))
+                .then((res) => setAnalytics(res.data))
+                .catch((err) =>
+                    console.error("Failed to fetch analytics:", err),
+                )
                 .finally(() => setLoadingAnalytics(false));
         }
     }, [isProfileModalOpen, username]);
@@ -271,6 +300,32 @@ const LeftSidebar = ({
                     </motion.div>
                 </div>
 
+                {/* ✨ LIGHT GLASSMORPHISM SEARCH BAR */}
+                <div className="px-4 mb-5">
+                    {/* Subtle transparent outer ring */}
+                    <div className="p-[3px] rounded-xl bg-gray-400/10 hover:bg-gray-400/20 focus-within:bg-blue-500/10 transition-colors duration-300 group">
+                        {/* Inner transparent glass container */}
+                        <div className="relative flex items-center w-full h-10 bg-white/40 backdrop-blur-sm border border-gray-200/60 rounded-[9px] overflow-hidden shadow-sm focus-within:bg-white/80 focus-within:border-blue-200/60 transition-all duration-300">
+                            {/* Search Icon */}
+                            <div className="flex items-center justify-center pl-3 pr-2.5 text-gray-400 group-focus-within:text-blue-500 transition-colors duration-300 shrink-0">
+                                <FaSearch size={14} />
+                            </div>
+
+                            {/* Input Field (Shortcut pill removed, right padding added) */}
+                            <input
+                                ref={searchInputRef}
+                                type="text"
+                                value={projectSearchQuery}
+                                onChange={(e) =>
+                                    setProjectSearchQuery(e.target.value)
+                                }
+                                placeholder="Find project..."
+                                className="flex-1 h-full bg-transparent text-[13px] tracking-wide text-gray-700 outline-none placeholder-gray-400 w-full pr-4"
+                            />
+                        </div>
+                    </div>
+                </div>
+
                 {/* 3. Projects Section */}
                 <div className="flex-grow flex flex-col overflow-hidden">
                     <div className="px-5 mb-2">
@@ -281,7 +336,7 @@ const LeftSidebar = ({
 
                     {/* Scrollable Project List */}
                     <div className="flex-grow overflow-y-auto custom-scrollbar px-2">
-                        {projects.map((project, index) => {
+                        {filteredProjects.map((project, index) => {
                             const isSelected =
                                 project.projectId === selectedProjectId;
                             const dotColor =
@@ -588,10 +643,14 @@ const LeftSidebar = ({
                                         {localStorage.getItem("email") ||
                                             "Email not set"}
                                     </p>
-                                    
+
                                     <div className="w-full bg-blue-50 rounded-xl p-4 text-center border border-blue-100">
-                                        <p className="text-xs text-blue-500 uppercase tracking-wider font-bold mb-1">Member ID</p>
-                                        <p className="text-sm font-mono text-blue-800 truncate">{localStorage.getItem("memberId")}</p>
+                                        <p className="text-xs text-blue-500 uppercase tracking-wider font-bold mb-1">
+                                            Member ID
+                                        </p>
+                                        <p className="text-sm font-mono text-blue-800 truncate">
+                                            {localStorage.getItem("memberId")}
+                                        </p>
                                     </div>
                                 </motion.div>
 
@@ -604,7 +663,7 @@ const LeftSidebar = ({
                                     <h3 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2">
                                         Performance Analytics
                                     </h3>
-                                    
+
                                     {loadingAnalytics ? (
                                         <div className="flex-grow flex justify-center items-center">
                                             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
@@ -613,50 +672,119 @@ const LeftSidebar = ({
                                         <div className="flex flex-col gap-4">
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="bg-gradient-to-br from-green-50 to-emerald-100 p-4 rounded-xl shadow-sm border border-green-200 flex flex-col justify-center items-center">
-                                                    <p className="text-green-700 text-sm font-semibold mb-1">Tasks Completed</p>
-                                                    <p className="text-3xl font-black text-green-600">{analytics?.tasksCompleted || 0}</p>
+                                                    <p className="text-green-700 text-sm font-semibold mb-1">
+                                                        Tasks Completed
+                                                    </p>
+                                                    <p className="text-3xl font-black text-green-600">
+                                                        {analytics?.tasksCompleted ||
+                                                            0}
+                                                    </p>
                                                 </div>
                                                 <div className="bg-gradient-to-br from-amber-50 to-yellow-100 p-4 rounded-xl shadow-sm border border-amber-200 flex flex-col justify-center items-center">
-                                                    <p className="text-amber-700 text-sm font-semibold mb-1">Tasks Pending</p>
-                                                    <p className="text-3xl font-black text-amber-600">{analytics?.tasksPending || 0}</p>
+                                                    <p className="text-amber-700 text-sm font-semibold mb-1">
+                                                        Tasks Pending
+                                                    </p>
+                                                    <p className="text-3xl font-black text-amber-600">
+                                                        {analytics?.tasksPending ||
+                                                            0}
+                                                    </p>
                                                 </div>
                                                 <div className="bg-gradient-to-br from-red-50 to-rose-100 p-4 rounded-xl shadow-sm border border-red-200 flex flex-col justify-center items-center">
-                                                    <p className="text-red-700 text-sm font-semibold mb-1 text-center">Overdue / Long Pending</p>
-                                                    <p className="text-3xl font-black text-red-600">{analytics?.tasksPendingForLong || 0}</p>
+                                                    <p className="text-red-700 text-sm font-semibold mb-1 text-center">
+                                                        Overdue / Long Pending
+                                                    </p>
+                                                    <p className="text-3xl font-black text-red-600">
+                                                        {analytics?.tasksPendingForLong ||
+                                                            0}
+                                                    </p>
                                                 </div>
                                                 <div className="bg-gradient-to-br from-indigo-50 to-blue-100 p-4 rounded-xl shadow-sm border border-indigo-200 flex flex-col justify-center items-center">
-                                                    <p className="text-indigo-700 text-sm font-semibold mb-1">Total Projects</p>
-                                                    <p className="text-3xl font-black text-indigo-600">{projects.length}</p>
+                                                    <p className="text-indigo-700 text-sm font-semibold mb-1">
+                                                        Total Projects
+                                                    </p>
+                                                    <p className="text-3xl font-black text-indigo-600">
+                                                        {projects.length}
+                                                    </p>
                                                 </div>
                                             </div>
 
                                             <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 mt-2 shadow-inner">
-                                                <h4 className="text-sm font-semibold text-gray-600 mb-3">Activity Heatmap (Last 14 Days)</h4>
+                                                <h4 className="text-sm font-semibold text-gray-600 mb-3">
+                                                    Activity Heatmap (Last 14
+                                                    Days)
+                                                </h4>
                                                 <div className="flex items-end justify-between h-20 gap-1">
-                                                    {Array.from({ length: 14 }).map((_, i) => {
+                                                    {Array.from({
+                                                        length: 14,
+                                                    }).map((_, i) => {
                                                         const d = new Date();
-                                                        d.setDate(d.getDate() - (13 - i));
-                                                        const dateStr = d.toISOString().split('T')[0];
-                                                        const count = analytics?.activityHeatMap?.[dateStr] || 0;
-                                                        
+                                                        d.setDate(
+                                                            d.getDate() -
+                                                                (13 - i),
+                                                        );
+                                                        const dateStr = d
+                                                            .toISOString()
+                                                            .split("T")[0];
+                                                        const count =
+                                                            analytics
+                                                                ?.activityHeatMap?.[
+                                                                dateStr
+                                                            ] || 0;
+
                                                         // Max height calc
-                                                        const maxCount = Math.max(...Object.values(analytics?.activityHeatMap || {0:1}), 1);
-                                                        const heightPercent = count > 0 ? Math.max((count / maxCount) * 100, 15) : 5;
-                                                        
-                                                        let colorClass = "bg-gray-200";
-                                                        if (count > 0) colorClass = "bg-blue-300";
-                                                        if (count > 2) colorClass = "bg-blue-500";
-                                                        if (count > 5) colorClass = "bg-blue-700";
+                                                        const maxCount =
+                                                            Math.max(
+                                                                ...Object.values(
+                                                                    analytics?.activityHeatMap || {
+                                                                        0: 1,
+                                                                    },
+                                                                ),
+                                                                1,
+                                                            );
+                                                        const heightPercent =
+                                                            count > 0
+                                                                ? Math.max(
+                                                                      (count /
+                                                                          maxCount) *
+                                                                          100,
+                                                                      15,
+                                                                  )
+                                                                : 5;
+
+                                                        let colorClass =
+                                                            "bg-gray-200";
+                                                        if (count > 0)
+                                                            colorClass =
+                                                                "bg-blue-300";
+                                                        if (count > 2)
+                                                            colorClass =
+                                                                "bg-blue-500";
+                                                        if (count > 5)
+                                                            colorClass =
+                                                                "bg-blue-700";
 
                                                         return (
-                                                            <div key={i} className="flex flex-col items-center flex-1 group relative">
-                                                                <div 
-                                                                    className={`w-full rounded-t-sm ${colorClass} transition-all duration-300 group-hover:opacity-80`} 
-                                                                    style={{ height: `${heightPercent}%` }}
+                                                            <div
+                                                                key={i}
+                                                                className="flex flex-col items-center flex-1 group relative"
+                                                            >
+                                                                <div
+                                                                    className={`w-full rounded-t-sm ${colorClass} transition-all duration-300 group-hover:opacity-80`}
+                                                                    style={{
+                                                                        height: `${heightPercent}%`,
+                                                                    }}
                                                                 ></div>
                                                                 {/* Tooltip */}
                                                                 <div className="opacity-0 group-hover:opacity-100 absolute -top-8 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10 pointer-events-none transition-opacity">
-                                                                    {count} tasks on {d.toLocaleDateString(undefined, {month: 'short', day: 'numeric'})}
+                                                                    {count}{" "}
+                                                                    tasks on{" "}
+                                                                    {d.toLocaleDateString(
+                                                                        undefined,
+                                                                        {
+                                                                            month: "short",
+                                                                            day: "numeric",
+                                                                        },
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         );
