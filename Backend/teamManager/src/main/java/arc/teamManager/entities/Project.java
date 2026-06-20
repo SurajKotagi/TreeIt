@@ -13,15 +13,22 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Project {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "PROJECT_ID")
-    private Long projectId;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(name = "PROJECT_ID")
+	private Long projectId;
 
-    @Column(name = "NAME")
-    private String name;
+	@Column(name = "NAME")
+	private String name;
 
-    public Long getProjectId() {
+	// Add these to your Project entity class
+	@Column(name = "STATUS")
+	private String status = "in_progress"; // Default to in_progress
+
+	@Column(name = "SORT_ORDER")
+	private Integer sortOrder = 0;
+
+	public Long getProjectId() {
 		return projectId;
 	}
 
@@ -54,15 +61,11 @@ public class Project {
 	}
 
 	@ManyToOne
-    @JoinColumn(name = "MEMBER_ID")
-    private Member member;
+	@JoinColumn(name = "MEMBER_ID")
+	private Member member;
 
-    @ManyToMany
-    @JoinTable(
-        name = "project_members",
-        joinColumns = @JoinColumn(name = "project_id"),
-        inverseJoinColumns = @JoinColumn(name = "member_id")
-    )
-    private List<Member> members;
+	@ManyToMany
+	@JoinTable(name = "project_members", joinColumns = @JoinColumn(name = "project_id"), inverseJoinColumns = @JoinColumn(name = "member_id"))
+	private List<Member> members;
 
 }

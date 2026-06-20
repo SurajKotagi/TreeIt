@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import api from "./utility/BaseAPI";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, Reorder } from "framer-motion";
 import {
     FaPlus,
     FaUserPlus,
@@ -10,6 +10,9 @@ import {
     FaLeaf,
     FaCog,
     FaQuestionCircle,
+    FaCheckCircle,
+    FaUndo,
+    FaGripVertical,
 } from "react-icons/fa";
 import Avatar from "boring-avatars";
 
@@ -37,6 +40,111 @@ const LeftSidebar = ({
     // ✨ NEW: Project Search State and Ref
     const [projectSearchQuery, setProjectSearchQuery] = useState("");
     const searchInputRef = useRef(null);
+    // ✨ NEW: Local projects state to handle smooth drag-and-drop & instant status updates
+    const [localProjects, setLocalProjects] = useState([]);
+
+    useEffect(() => {
+        setLocalProjects(projects);
+    }, [projects]);
+
+    // Helper function for quick native toasts
+    const showToast = (message, type = "success") => {
+        const toast = document.createElement("div");
+        toast.className = `fixed bottom-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 animate-fadeIn text-white ${
+            type === "success" ? "bg-green-500" : "bg-red-500"
+        }`;
+        toast.innerText = message;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.classList.add("animate-fadeOut");
+            setTimeout(() => document.body.removeChild(toast), 500);
+        }, 3000);
+    };
+
+    // ✨ NEW: Split the filtered projects into two sections
+    const filteredProjects = localProjects.filter((project) =>
+        project.name.toLowerCase().includes(projectSearchQuery.toLowerCase()),
+    );
+    const inProgressProjects = filteredProjects.filter(
+        (p) => p.status !== "completed",
+    );
+    const completedProjects = filteredProjects.filter(
+        (p) => p.status === "completed",
+    );
+
+    // ✨ UPDATED: Handle Status Toggle
+    const handleToggleProjectStatus = async (project) => {
+        const newStatus =
+            project.status === "completed" ? "in_progress" : "completed";
+
+        // 1. Optimistic UI Update (Moves it instantly)
+        setLocalProjects((prev) =>
+            prev.map((p) =>
+                p.projectId === project.projectId
+                    ? { ...p, status: newStatus }
+                    : p,
+            ),
+        );
+        setMenuOpenId(null);
+
+        // 2. Backend Call to new /status endpoint
+        try {
+            await api.put(`/projects/${project.projectId}/status`, {
+                status: newStatus,
+            });
+            showToast(
+                newStatus === "completed"
+                    ? "Project Marked as Completed"
+                    : "Project moved to In Progress",
+            );
+        } catch (error) {
+            console.error("Failed to update status", error);
+            showToast("Failed to save. Reverting...", "error");
+            // Revert back if the database call fails
+            setLocalProjects((prev) =>
+                prev.map((p) =>
+                    p.projectId === project.projectId
+                        ? { ...p, status: project.status }
+                        : p,
+                ),
+            );
+        }
+    };
+
+    // ✨ NEW: Master DB Save for Drag and Drop
+    const saveOrderToDB = async (updatedProjects) => {
+        try {
+            const orderPayload = updatedProjects.map((p, index) => ({
+                projectId: p.projectId,
+                sortOrder: index,
+            }));
+            await api.put(`/projects/reorder`, orderPayload);
+        } catch (error) {
+            console.error("Failed to save order", error);
+            showToast("Failed to save project order", "error");
+        }
+    };
+
+    // ✨ UPDATED: Reorder Handlers
+    const handleReorderInProgress = (newOrder) => {
+        if (projectSearchQuery) return;
+        setLocalProjects((prev) => {
+            const completed = prev.filter((p) => p.status === "completed");
+            const merged = [...newOrder, ...completed];
+            saveOrderToDB(merged); // Send to backend!
+            return merged;
+        });
+    };
+
+    const handleReorderCompleted = (newOrder) => {
+        if (projectSearchQuery) return;
+        setLocalProjects((prev) => {
+            const inProgress = prev.filter((p) => p.status !== "completed");
+            const merged = [...inProgress, ...newOrder];
+            saveOrderToDB(merged); // Send to backend!
+            return merged;
+        });
+    };
 
     // ✨ UPDATED: Keyboard shortcut effect (Press Cmd+/ or Ctrl+/ to focus search)
     useEffect(() => {
@@ -56,11 +164,6 @@ const LeftSidebar = ({
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, []);
-
-    // ✨ NEW: Filter the projects based on the search query
-    const filteredProjects = projects.filter((project) =>
-        project.name.toLowerCase().includes(projectSearchQuery.toLowerCase()),
-    );
 
     useEffect(() => {
         if (isProfileModalOpen && username) {
@@ -181,6 +284,118 @@ const LeftSidebar = ({
         const colors = ["#f77272", "#fabd23", "#49de80"];
         return colors[Math.floor(Math.random() * colors.length)];
     });
+
+    // ✨ NEW: Reusable UI block for a single project item
+    const renderProjectItem = (project, index) => {
+        const isSelected = project.projectId === selectedProjectId;
+        const isCompleted = project.status === "completed";
+        const dotColor = isCompleted
+            ? "bg-green-500"
+            : dotColors[index % dotColors.length];
+
+        return (
+            <Reorder.Item
+                key={project.projectId}
+                value={project}
+                dragListener={!projectSearchQuery} // Disables drag when typing in the search bar
+                className="mb-0.5 relative group cursor-grab active:cursor-grabbing"
+            >
+                {/* Drag Grip Icon (Appears on hover) */}
+                <div className="absolute left-1.5 top-0 bottom-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <FaGripVertical size={10} className="text-gray-300" />
+                </div>
+
+                <div
+                    className={`flex items-start justify-between pl-6 pr-3 py-2 rounded-r-lg transition-all duration-200 ${
+                        isSelected
+                            ? "bg-blue-50/60 border-l-4 border-blue-600"
+                            : "border-l-4 border-transparent hover:bg-gray-100"
+                    }`}
+                    onClick={() => onSelectProjectClick(project.projectId)}
+                >
+                    <div className="flex items-start gap-3 flex-1 pr-2">
+                        <span
+                            className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${dotColor}`}
+                        ></span>
+                        <span
+                            className={`text-sm leading-snug break-words transition-all ${
+                                isSelected
+                                    ? "font-semibold text-blue-700"
+                                    : "font-medium text-gray-600 group-hover:text-gray-800"
+                            } ${isCompleted ? "line-through opacity-60" : ""}`}
+                        >
+                            {project.name}
+                        </span>
+                    </div>
+
+                    {/* 3-Dots Menu Button */}
+                    <button
+                        className={`shrink-0 w-6 h-6 flex items-center justify-center rounded-md transition-colors ${
+                            isSelected
+                                ? "text-blue-500 hover:bg-blue-100"
+                                : "text-gray-400 hover:bg-gray-200 opacity-0 group-hover:opacity-100"
+                        }`}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            toggleMenu(project.projectId);
+                        }}
+                    >
+                        ⋮
+                    </button>
+                </div>
+
+                {/* Dropdown Menu */}
+                <AnimatePresence>
+                    {menuOpenId === project.projectId && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="ml-6 mr-2 mt-1 mb-2 space-y-1 overflow-hidden"
+                        >
+                            {/* ✨ NEW: Move to Completed / In Progress Button */}
+                            <button
+                                className="w-full text-left py-1.5 px-3 text-xs font-medium text-gray-600 rounded-md hover:bg-gray-100 transition-colors flex items-center gap-2"
+                                onClick={() =>
+                                    handleToggleProjectStatus(project)
+                                }
+                            >
+                                {isCompleted ? (
+                                    <>
+                                        <FaUndo className="text-gray-500" />{" "}
+                                        Move to In Progress
+                                    </>
+                                ) : (
+                                    <>
+                                        <FaCheckCircle className="text-green-500" />{" "}
+                                        Mark as Completed
+                                    </>
+                                )}
+                            </button>
+
+                            {/* Existing Buttons */}
+                            <button
+                                className="w-full text-left py-1.5 px-3 text-xs font-medium text-gray-600 rounded-md hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-2"
+                                onClick={() => openAddMemberModal(project)}
+                            >
+                                <FaUserPlus className="text-blue-500" /> Add
+                                Members
+                            </button>
+                            <button
+                                className="w-full text-left py-1.5 px-3 text-xs font-medium text-red-500 rounded-md hover:bg-red-50 transition-colors flex items-center gap-2"
+                                onClick={() =>
+                                    handleDeleteProject(project.projectId)
+                                }
+                            >
+                                <FaTrashAlt className="text-red-400" /> Delete
+                                Project
+                            </button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </Reorder.Item>
+        );
+    };
 
     return (
         <>
@@ -328,123 +543,67 @@ const LeftSidebar = ({
 
                 {/* 3. Projects Section */}
                 <div className="flex-grow flex flex-col overflow-hidden">
-                    <div className="px-5 mb-2">
-                        <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                            Projects
-                        </h2>
+                    <div className="flex-grow overflow-y-auto custom-scrollbar px-2 pb-4">
+                        {/* ✨ IN PROGRESS SECTION */}
+                        <div className="mb-5">
+                            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 mb-2 flex items-center justify-between">
+                                In Progress
+                                <span className="bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded-md text-[9px]">
+                                    {inProgressProjects.length}
+                                </span>
+                            </h3>
+                            <Reorder.Group
+                                axis="y"
+                                values={inProgressProjects}
+                                onReorder={handleReorderInProgress}
+                            >
+                                {inProgressProjects.map((project, index) =>
+                                    renderProjectItem(project, index),
+                                )}
+                            </Reorder.Group>
+
+                            {inProgressProjects.length === 0 && (
+                                <div className="px-4 py-2 text-xs text-gray-400 italic">
+                                    No active projects
+                                </div>
+                            )}
+                        </div>
+
+                        {/* ✨ COMPLETED SECTION */}
+                        <div className="mb-2">
+                            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 mb-2 flex items-center justify-between">
+                                Completed
+                                <span className="bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded-md text-[9px]">
+                                    {completedProjects.length}
+                                </span>
+                            </h3>
+                            <Reorder.Group
+                                axis="y"
+                                values={completedProjects}
+                                onReorder={handleReorderCompleted}
+                            >
+                                {completedProjects.map((project, index) =>
+                                    renderProjectItem(project, index),
+                                )}
+                            </Reorder.Group>
+
+                            {completedProjects.length === 0 && (
+                                <div className="px-4 py-2 text-xs text-gray-400 italic">
+                                    No completed projects
+                                </div>
+                            )}
+                        </div>
                     </div>
 
-                    {/* Scrollable Project List */}
-                    <div className="flex-grow overflow-y-auto custom-scrollbar px-2">
-                        {filteredProjects.map((project, index) => {
-                            const isSelected =
-                                project.projectId === selectedProjectId;
-                            const dotColor =
-                                dotColors[index % dotColors.length];
-
-                            return (
-                                <motion.div
-                                    key={project.projectId}
-                                    className="mb-0.5"
-                                >
-                                    <div
-                                        // CHANGED: items-center is now items-start so the 3-dots stay near the top
-                                        className={`flex items-start justify-between px-3 py-2 cursor-pointer rounded-r-lg transition-all duration-200 group ${
-                                            isSelected
-                                                ? "bg-blue-50/60 border-l-4 border-blue-600"
-                                                : "border-l-4 border-transparent hover:bg-gray-100"
-                                        }`}
-                                        onClick={() =>
-                                            onSelectProjectClick(
-                                                project.projectId,
-                                            )
-                                        }
-                                    >
-                                        {/* CHANGED: items-center is now items-start, added flex-1 and pr-2 */}
-                                        <div className="flex items-start gap-3 flex-1 pr-2">
-                                            {/* CHANGED: Added mt-1.5 to push the dot down slightly to align with the first line of text */}
-                                            <span
-                                                className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${dotColor}`}
-                                            ></span>
-
-                                            {/* CHANGED: Removed 'truncate', added 'leading-snug break-words' */}
-                                            <span
-                                                className={`text-sm leading-snug break-words ${isSelected ? "font-semibold text-blue-700" : "font-medium text-gray-600 group-hover:text-gray-800"}`}
-                                            >
-                                                {project.name}
-                                            </span>
-                                        </div>
-
-                                        {/* Subtle 3-Dots Menu */}
-                                        <button
-                                            className={`shrink-0 w-6 h-6 flex items-center justify-center rounded-md transition-colors ${
-                                                isSelected
-                                                    ? "text-blue-500 hover:bg-blue-100"
-                                                    : "text-gray-400 hover:bg-gray-200 opacity-0 group-hover:opacity-100"
-                                            }`}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                toggleMenu(project.projectId);
-                                            }}
-                                        >
-                                            ⋮
-                                        </button>
-                                    </div>
-
-                                    {/* Project Actions Dropdown */}
-                                    <AnimatePresence>
-                                        {menuOpenId === project.projectId && (
-                                            <motion.div
-                                                initial={{
-                                                    height: 0,
-                                                    opacity: 0,
-                                                }}
-                                                animate={{
-                                                    height: "auto",
-                                                    opacity: 1,
-                                                }}
-                                                exit={{ height: 0, opacity: 0 }}
-                                                className="ml-6 mr-2 mt-1 mb-2 space-y-1 overflow-hidden"
-                                            >
-                                                <button
-                                                    className="w-full text-left py-1.5 px-3 text-xs font-medium text-gray-600 rounded-md hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-2"
-                                                    onClick={() =>
-                                                        openAddMemberModal(
-                                                            project,
-                                                        )
-                                                    }
-                                                >
-                                                    <FaUserPlus className="text-blue-500" />{" "}
-                                                    Add Members
-                                                </button>
-                                                <button
-                                                    className="w-full text-left py-1.5 px-3 text-xs font-medium text-red-500 rounded-md hover:bg-red-50 transition-colors flex items-center gap-2"
-                                                    onClick={() =>
-                                                        handleDeleteProject(
-                                                            project.projectId,
-                                                        )
-                                                    }
-                                                >
-                                                    <FaTrashAlt className="text-red-400" />{" "}
-                                                    Delete Project
-                                                </button>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </motion.div>
-                            );
-                        })}
-
-                        {/* 4. Subtle Create Project Button */}
-                        <div className="px-2 mt-2">
-                            <button
-                                onClick={onAddProject}
-                                className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-500 hover:text-blue-600 border border-transparent hover:border-gray-200 hover:bg-white hover:shadow-sm rounded-lg transition-all duration-200"
-                            >
-                                <FaPlus className="text-xs opacity-70" />
-                                Create Project
-                            </button>
-                        </div>
+                    {/* 4. Subtle Create Project Button */}
+                    <div className="px-2 mt-2">
+                        <button
+                            onClick={onAddProject}
+                            className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-500 hover:text-blue-600 border border-transparent hover:border-gray-200 hover:bg-white hover:shadow-sm rounded-lg transition-all duration-200"
+                        >
+                            <FaPlus className="text-xs opacity-70" />
+                            Create Project
+                        </button>
                     </div>
                 </div>
 

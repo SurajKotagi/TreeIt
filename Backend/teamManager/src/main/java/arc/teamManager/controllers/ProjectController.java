@@ -1,6 +1,7 @@
 package arc.teamManager.controllers;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -78,6 +79,35 @@ public class ProjectController {
     public ResponseEntity<?> deleteProject(@PathVariable Long projectId) {
         projectService.deleteProject(projectId);
         return ResponseEntity.ok("Project deleted");
+    }
+
+    // 1. Endpoint to handle clicking the 3-dots "Mark as Completed"
+    @PutMapping("/{projectId}/status")
+    public ResponseEntity<?> updateProjectStatus(@PathVariable Long projectId,
+            @RequestBody Map<String, String> payload) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Project not found"));
+
+        project.setStatus(payload.get("status"));
+        projectRepository.save(project);
+
+        return ResponseEntity.ok(project);
+    }
+
+    // 2. Endpoint to handle Drag and Drop saving
+    @PutMapping("/reorder")
+    public ResponseEntity<?> reorderProjects(@RequestBody List<Map<String, Object>> payload) {
+        for (Map<String, Object> item : payload) {
+            Long projectId = Long.valueOf(item.get("projectId").toString());
+            Integer sortOrder = Integer.valueOf(item.get("sortOrder").toString());
+
+            Project project = projectRepository.findById(projectId).orElse(null);
+            if (project != null) {
+                project.setSortOrder(sortOrder);
+                projectRepository.save(project);
+            }
+        }
+        return ResponseEntity.ok().build();
     }
 
 }
