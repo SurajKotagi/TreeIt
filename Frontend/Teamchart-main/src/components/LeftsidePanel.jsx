@@ -13,6 +13,7 @@ import {
     FaCheckCircle,
     FaUndo,
     FaGripVertical,
+    FaCamera,
 } from "react-icons/fa";
 import Avatar from "boring-avatars";
 
@@ -42,6 +43,63 @@ const LeftSidebar = ({
     const searchInputRef = useRef(null);
     // ✨ NEW: Local projects state to handle smooth drag-and-drop & instant status updates
     const [localProjects, setLocalProjects] = useState([]);
+    const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+    const fileInputRef = useRef(null);
+
+    // ✨ NEW: Try to load a custom avatar from local storage on mount
+    useEffect(() => {
+        const savedAvatar = localStorage.getItem("customAvatar");
+        if (savedAvatar) {
+            setAvatar(savedAvatar);
+        }
+    }, []);
+
+    // ✨ NEW: Handle the image upload
+    const handleAvatarUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // 1. Validate file type and size (e.g., max 2MB)
+        if (!file.type.startsWith("image/")) {
+            return showToast("Please select a valid image file", "error");
+        }
+        if (file.size > 2 * 1024 * 1024) {
+            return showToast("Image must be smaller than 2MB", "error");
+        }
+
+        // 2. Create an instant local preview (Optimistic UI)
+        const previewUrl = URL.createObjectURL(file);
+        const oldAvatar = avatar; // Save in case of API failure
+        setAvatar(previewUrl);
+
+        // 3. Prepare the file for the backend
+        const formData = new FormData();
+        formData.append("avatar", file);
+
+        setIsUploadingAvatar(true);
+        try {
+            // ✨ Send to your backend (You will need to create this endpoint in Spring Boot!)
+            const res = await api.post(
+                `/members/${username}/avatar`,
+                formData,
+                {
+                    headers: { "Content-Type": "multipart/form-data" },
+                },
+            );
+
+            // If backend returns a permanent URL, use it. Otherwise, stick with the preview.
+            const permanentUrl = res.data.avatarUrl || previewUrl;
+            setAvatar(permanentUrl);
+            localStorage.setItem("customAvatar", permanentUrl); // Cache it locally
+            showToast("Profile picture updated successfully!");
+        } catch (error) {
+            console.error("Avatar upload failed", error);
+            showToast("Failed to upload image. Reverting...", "error");
+            setAvatar(oldAvatar); // Revert on failure
+        } finally {
+            setIsUploadingAvatar(false);
+        }
+    };
 
     useEffect(() => {
         setLocalProjects(projects);
@@ -776,13 +834,46 @@ const LeftSidebar = ({
                                     animate={{ x: 0, opacity: 1 }}
                                     transition={{ delay: 0.1 }}
                                 >
-                                    {/* Large Fun Emoji Avatar for Modal */}
-                                    <div className="w-32 h-32 rounded-2xl overflow-hidden border border-gray-200 shadow-lg mb-4">
+                                    {/* ✨ NEW: Hidden file input */}
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        ref={fileInputRef}
+                                        className="hidden"
+                                        onChange={handleAvatarUpload}
+                                    />
+
+                                    {/* ✨ UPDATED: Interactive Avatar Container */}
+                                    <div
+                                        className="relative w-32 h-32 rounded-2xl overflow-hidden border border-gray-200 shadow-lg mb-4 cursor-pointer group"
+                                        onClick={() =>
+                                            fileInputRef.current?.click()
+                                        }
+                                        title="Click to change profile picture"
+                                    >
                                         <img
                                             src={avatar}
                                             alt="Current Avatar"
-                                            className="w-full h-full object-cover"
+                                            className={`w-full h-full object-cover transition-opacity duration-300 ${isUploadingAvatar ? "opacity-50 blur-sm" : "group-hover:opacity-70"}`}
                                         />
+
+                                        {/* Hover Overlay */}
+                                        <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                            <FaCamera
+                                                className="text-white mb-1"
+                                                size={24}
+                                            />
+                                            <span className="text-white text-xs font-semibold tracking-wider uppercase">
+                                                Change
+                                            </span>
+                                        </div>
+
+                                        {/* Loading Spinner during upload */}
+                                        {isUploadingAvatar && (
+                                            <div className="absolute inset-0 flex items-center justify-center bg-white/30 backdrop-blur-sm">
+                                                <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <h2 className="text-2xl font-bold text-gray-800 mb-1 text-center">

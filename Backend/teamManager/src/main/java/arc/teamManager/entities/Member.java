@@ -21,31 +21,33 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Member {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "MEMBER_ID")
-    private Long memberId;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(name = "MEMBER_ID")
+	private Long memberId;
 
-    @Column(name = "USERNAME", unique = true, nullable = false)
-    private String username;
+	@Column(name = "USERNAME", unique = true, nullable = false)
+	private String username;
 
-    @Column(name = "EMAIL", nullable = false)
-    private String mail;
+	@Column(name = "EMAIL", nullable = false)
+	private String mail;
 
 	@Column(name = "EMPLOYEE_ID", nullable = false)
-    private String employeeId;
+	private String employeeId;
 
-    @Column(name = "PASSWORD", nullable = false)
-    private String password;
+	@Column(name = "PASSWORD", nullable = false)
+	private String password;
 
-    @Column(name = "ROLE")
-    private String role;
+	@Column(name = "ROLE")
+	private String role;
 
-    @ManyToMany(mappedBy = "members")
-    @JsonIgnore
-    private List<Project> projects;
+	@ManyToMany(mappedBy = "members")
+	@JsonIgnore
+	private List<Project> projects;
 
-	
+	@Column(name = "avatar_url")
+	private String avatarUrl;
+
 	public Long getMemberId() {
 		return memberId;
 	}
@@ -85,7 +87,5 @@ public class Member {
 	public void setProjects(List<Project> projects) {
 		this.projects = projects;
 	}
-
-    
 
 }

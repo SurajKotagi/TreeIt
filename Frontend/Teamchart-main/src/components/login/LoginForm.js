@@ -20,20 +20,47 @@ function LoginForm({ onLogin }) {
             try {
                 // We send the access token to backend, or for simplicity, we can fetch user info here
                 // For a proper implementation, backend should verify the token.
-                const userInfo = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-                    headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-                }).then(res => res.json());
+                const userInfo = await fetch(
+                    "https://www.googleapis.com/oauth2/v3/userinfo",
+                    {
+                        headers: {
+                            Authorization: `Bearer ${tokenResponse.access_token}`,
+                        },
+                    },
+                ).then((res) => res.json());
 
                 const res = await api.post("/auth/google", {
                     mail: userInfo.email,
                     name: userInfo.name,
                 });
 
-                if (res.status === 200 && typeof res.data === "number") {
-                    localStorage.setItem("memberId", res.data);
-                    localStorage.setItem("username", userInfo.name);
-                    onLogin(res.data);
-                    showSuccess("Logged in as " + userInfo.name);
+                // ✨ CHANGED: Expect an object instead of a number, and save the avatar!
+                if (res.status === 200 && res.data && res.data.memberId) {
+                    localStorage.setItem("memberId", res.data.memberId);
+                    // Use backend username, fallback to Google name
+                    localStorage.setItem(
+                        "username",
+                        res.data.username || userInfo.name,
+                    );
+                    localStorage.setItem(
+                        "email",
+                        res.data.email || userInfo.email,
+                    );
+
+                    // Check for custom avatar
+                    if (res.data.avatarUrl) {
+                        localStorage.setItem(
+                            "customAvatar",
+                            res.data.avatarUrl,
+                        );
+                    } else {
+                        localStorage.removeItem("customAvatar");
+                    }
+
+                    onLogin(res.data.memberId);
+                    showSuccess(
+                        "Logged in as " + (res.data.username || userInfo.name),
+                    );
                     navigate("/home");
                 } else {
                     showError("Unexpected response from server.");
@@ -44,7 +71,7 @@ function LoginForm({ onLogin }) {
                 setIsLoading(false);
             }
         },
-        onError: errorResponse => showError("Google Login failed."),
+        onError: (errorResponse) => showError("Google Login failed."),
     });
 
     const handleSubmit = async (e) => {
@@ -52,11 +79,22 @@ function LoginForm({ onLogin }) {
         setIsLoading(true);
         try {
             const res = await loginUser(form);
-            if (res.status === 200 && typeof res.data === "number") {
-                localStorage.setItem("memberId", res.data);
-                localStorage.setItem("username", form.username);
-                onLogin(res.data);
-                showSuccess("Logged in as " + form.username);
+
+            // ✨ CHANGED: Expect an object, save details, and save avatar!
+            if (res.status === 200 && res.data && res.data.memberId) {
+                localStorage.setItem("memberId", res.data.memberId);
+                localStorage.setItem("username", res.data.username);
+                localStorage.setItem("email", res.data.email);
+
+                // Check for custom avatar
+                if (res.data.avatarUrl) {
+                    localStorage.setItem("customAvatar", res.data.avatarUrl);
+                } else {
+                    localStorage.removeItem("customAvatar");
+                }
+
+                onLogin(res.data.memberId);
+                showSuccess("Logged in as " + res.data.username);
                 navigate("/home");
             } else {
                 showError("Unexpected response from server.");
@@ -203,7 +241,11 @@ function LoginForm({ onLogin }) {
                         whileHover={{ scale: 1.03 }}
                         whileTap={{ scale: 0.97 }}
                     >
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="google-icon" />
+                        <img
+                            src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg"
+                            alt="Google"
+                            className="google-icon"
+                        />
                         <span>Continue with Google</span>
                     </motion.button>
 

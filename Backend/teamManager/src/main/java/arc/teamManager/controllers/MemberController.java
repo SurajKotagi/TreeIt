@@ -9,15 +9,21 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import arc.teamManager.entities.Member;
 import arc.teamManager.entities.GraphNode;
 import arc.teamManager.entities.ActivityLog;
 import arc.teamManager.repositories.MemberRepository;
 import arc.teamManager.repositories.NodeRepository;
+import arc.teamManager.services.CloudinaryService;
 import arc.teamManager.repositories.ActivityLogRepository;
 import arc.teamManager.dto.MemberAnalyticsDTO;
 
@@ -32,6 +38,9 @@ public class MemberController {
     @Autowired
     ActivityLogRepository activityLogRepository;
 
+    @Autowired
+    private CloudinaryService cloudinaryService;
+
     @GetMapping("/members")
     public List<Member> getAllUsers() {
         return memberRepository.findAll();
@@ -40,7 +49,7 @@ public class MemberController {
     @GetMapping("/members/{username}/analytics")
     public MemberAnalyticsDTO getMemberAnalytics(@PathVariable String username) {
         List<GraphNode> nodes = nodeRepository.findByAssignedTo(username);
-        
+
         int completed = 0;
         int pending = 0;
         int pendingForLong = 0;
@@ -54,12 +63,15 @@ public class MemberController {
                 completed++;
             } else if ("pending".equalsIgnoreCase(status) || "stuck".equalsIgnoreCase(status)) {
                 pending++;
-                
-                // Check if pending for long (e.g., more than 7 days since createdTime or deadline passed)
+
+                // Check if pending for long (e.g., more than 7 days since createdTime or
+                // deadline passed)
                 boolean isOld = false;
                 if (node.getCreatedTime() != null) {
                     try {
-                        LocalDate createdDate = LocalDate.parse(node.getCreatedTime().substring(0, 10)); // Assuming ISO format "YYYY-MM-DDTHH:mm:ss.sssZ"
+                        LocalDate createdDate = LocalDate.parse(node.getCreatedTime().substring(0, 10)); // Assuming ISO
+                                                                                                         // format
+                                                                                                         // "YYYY-MM-DDTHH:mm:ss.sssZ"
                         if (ChronoUnit.DAYS.between(createdDate, today) > 7) {
                             isOld = true;
                         }
@@ -77,7 +89,7 @@ public class MemberController {
                         // ignore
                     }
                 }
-                
+
                 if (isOld) {
                     pendingForLong++;
                 }
@@ -102,7 +114,34 @@ public class MemberController {
         dto.setTasksPending(pending);
         dto.setTasksPendingForLong(pendingForLong);
         dto.setActivityHeatMap(heatMap);
-        
+
         return dto;
+    }
+
+    @PostMapping("/members/{username}/avatar")
+    public ResponseEntity<?> uploadProfilePicture(
+            @PathVariable String username,
+            @RequestParam("avatar") MultipartFile file) {
+
+        try {
+            // 1. Upload the physical file to Cloudinary
+            String permanentUrl = cloudinaryService.uploadAvatar(file);
+
+            // 2. Find the user in your database and save the string URL
+            Member member = memberRepository.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            member.setAvatarUrl(permanentUrl);
+            memberRepository.save(member);
+
+            // 3. Return the URL to React so the UI updates instantly
+            Map<String, String> response = new HashMap<>();
+            response.put("avatarUrl", permanentUrl);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to upload profile picture");
+        }
     }
 }

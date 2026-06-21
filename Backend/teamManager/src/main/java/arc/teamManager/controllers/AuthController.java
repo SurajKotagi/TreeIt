@@ -20,6 +20,7 @@ import arc.teamManager.services.MemberService;
 import arc.teamManager.services.EmailService;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
@@ -58,7 +59,15 @@ public class AuthController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not found");
             }
 
-            return ResponseEntity.ok(member.getMemberId()); // Return memberId or a token
+            // ✨ CHANGED: Return a comprehensive JSON object instead of just the ID
+            Map<String, Object> response = new HashMap<>();
+            response.put("memberId", member.getMemberId());
+            response.put("username", member.getUsername());
+            response.put("email", member.getMail());
+            response.put("avatarUrl", member.getAvatarUrl()); // <-- This fixes the vanishing photo!
+
+            return ResponseEntity.ok(response);
+
         } catch (AuthenticationException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid mail or username or password");
         }
@@ -80,25 +89,31 @@ public class AuthController {
             // Register a new member via Google if not found
             member = new Member();
             member.setMail(mail);
-            
+
             // Ensure unique username
             String username = name.replaceAll("\\s+", "");
             if (memberService.usernameExists(username)) {
                 username = username + new Random().nextInt(1000);
             }
             member.setUsername(username);
-            
+
             // Generate dummy employee ID
             member.setEmployeeId("GOOG-" + new Random().nextInt(999999));
-            
+
             // Set dummy password (they won't use it to login directly)
             member.setPassword(passwordEncoder.encode(Long.toHexString(new Random().nextLong())));
             member.setRole("USER");
-            
+
             member = memberRepository.save(member);
         }
+        // ✨ CHANGED: Return the same comprehensive JSON object for Google users
+        Map<String, Object> response = new HashMap<>();
+        response.put("memberId", member.getMemberId());
+        response.put("username", member.getUsername());
+        response.put("email", member.getMail());
+        response.put("avatarUrl", member.getAvatarUrl()); // <-- This fixes the vanishing photo!
 
-        return ResponseEntity.ok(member.getMemberId());
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/request-otp")
@@ -110,15 +125,15 @@ public class AuthController {
         if (memberService.mailExists(mail)) {
             return ResponseEntity.ok().body("Mail already exists");
         }
-        
+
         String otp = String.format("%06d", new Random().nextInt(999999));
-        
+
         OtpToken otpToken = new OtpToken();
         otpToken.setMail(mail);
         otpToken.setOtp(otp);
         otpToken.setExpiryTime(LocalDateTime.now().plusMinutes(5));
         otpTokenRepository.save(otpToken);
-        
+
         try {
             emailService.sendOtpEmail(mail, otp);
             return ResponseEntity.ok("OTP sent to email");
