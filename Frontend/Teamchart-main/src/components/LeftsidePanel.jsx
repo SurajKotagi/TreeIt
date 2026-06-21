@@ -596,25 +596,15 @@ const LeftSidebar = ({
                     </div>
 
                     {/* 4. Subtle Create Project Button */}
-                    <div className="px-2 mt-2">
+                    <div className="px-2 mt-2 mb-6">
+                        {" "}
+                        {/* ✨ CHANGED: Added mb-6 right here! */}
                         <button
                             onClick={onAddProject}
                             className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-500 hover:text-blue-600 border border-transparent hover:border-gray-200 hover:bg-white hover:shadow-sm rounded-lg transition-all duration-200"
                         >
                             <FaPlus className="text-xs opacity-70" />
                             Create Project
-                        </button>
-                    </div>
-                </div>
-
-                {/* 5. Bottom Footer (Settings & Help) */}
-                <div className="p-4 mt-auto border-t border-gray-200/60 bg-[#fafafa]">
-                    <div className="flex gap-2">
-                        <button className="flex-1 flex items-center justify-center gap-2 py-2 text-xs font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200/50">
-                            <FaCog /> Settings
-                        </button>
-                        <button className="flex-1 flex items-center justify-center gap-2 py-2 text-xs font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200/50">
-                            <FaQuestionCircle /> Help
                         </button>
                     </div>
                 </div>

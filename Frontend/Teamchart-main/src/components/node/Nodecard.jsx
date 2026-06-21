@@ -162,14 +162,14 @@ const Nodecard = ({
 
                         {/* 2. Scrollable Body Section - Tightened padding to p-5, gap-5 */}
                         <div className="px-5 py-4 overflow-y-auto overflow-x-hidden custom-scrollbar flex-1 flex flex-col gap-5">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* ✨ CHANGED: Replaced grid-cols-2 with flex-col to stack vertically */}
+                            <div className="flex flex-col gap-4">
                                 {/* Status Custom Dropdown */}
                                 {assignedTo === loggedInMember && (
                                     <div className="flex flex-col gap-1 z-20">
                                         <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider ml-1">
                                             Task Status
                                         </label>
-                                        {/* Ensure your CustomDropdown component renders with h-10 to match! */}
                                         <CustomDropdown
                                             value={currentStatusDisplay}
                                             options={statusOptions}
@@ -182,65 +182,57 @@ const Nodecard = ({
                                     </div>
                                 )}
 
-                                {/* React DatePicker */}
+                                {/* React DatePicker with Auto-Save */}
                                 {nodeData && creatorId === loggedInMemberId && (
                                     <div className="flex flex-col gap-1 z-10">
                                         <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider ml-1">
                                             Deadline
                                         </label>
-                                        {/* CHANGED: Using items-stretch instead of h-10 so they naturally match the dropdown's height */}
-                                        <div className="flex items-stretch gap-2">
-                                            <div className="flex-1 min-w-0">
-                                                {" "}
-                                                {/* min-w-0 prevents flex blowout */}
-                                                <DatePicker
-                                                    selected={
-                                                        deadline
-                                                            ? new Date(deadline)
-                                                            : null
-                                                    }
-                                                    onChange={(date) =>
-                                                        setDeadline(
-                                                            date
-                                                                ? date.toISOString()
-                                                                : "",
-                                                        )
-                                                    }
-                                                    customInput={
-                                                        <CustomDateInput />
-                                                    }
-                                                    minDate={new Date()}
-                                                    portalId="root"
-                                                    popperPlacement="bottom-start"
-                                                    showTimeInput
-                                                    timeInputLabel="Time:"
-                                                    dateFormat="MMM d, yyyy h:mm aa"
-                                                />
-                                            </div>
-                                            {/* CHANGED: Beautiful blue button instead of black */}
-                                            <button
-                                                onClick={async () => {
-                                                    if (!deadline)
-                                                        return showError(
-                                                            "Deadline cannot be empty",
-                                                        );
-                                                    try {
-                                                        await onDeadlineChange(
-                                                            deadline,
-                                                        );
-                                                        showSuccess(
-                                                            "Deadline updated!",
-                                                        );
-                                                    } catch (e) {
+                                        {/* ✨ CHANGED: Removed the flex-row wrapper and the Save button */}
+                                        <div className="w-full">
+                                            <DatePicker
+                                                selected={
+                                                    deadline
+                                                        ? new Date(deadline)
+                                                        : null
+                                                }
+                                                // ✨ CHANGED: Auto-save logic moved directly into onChange
+                                                onChange={async (date) => {
+                                                    const newDateStr = date
+                                                        ? date.toISOString()
+                                                        : "";
+                                                    setDeadline(newDateStr);
+
+                                                    if (newDateStr) {
+                                                        try {
+                                                            await onDeadlineChange(
+                                                                newDateStr,
+                                                            );
+                                                            showSuccess(
+                                                                "Deadline auto-saved!",
+                                                            );
+                                                        } catch (e) {
+                                                            showError(
+                                                                "Failed to update deadline",
+                                                            );
+                                                        }
+                                                    } else {
                                                         showError(
-                                                            "Failed to update deadline",
+                                                            "Deadline cannot be empty",
                                                         );
                                                     }
                                                 }}
-                                                className="bg-blue-500 text-white text-xs px-4 rounded-xl hover:bg-blue-600 transition-all font-bold shadow-sm shadow-blue-500/20 flex-shrink-0"
-                                            >
-                                                Save
-                                            </button>
+                                                customInput={
+                                                    <CustomDateInput />
+                                                }
+                                                minDate={new Date()}
+                                                portalId="root"
+                                                popperPlacement="bottom-start"
+                                                showTimeInput
+                                                timeInputLabel="Time:"
+                                                dateFormat="MMM d, yyyy h:mm aa"
+                                                className="w-full"
+                                            />
                                         </div>
                                     </div>
                                 )}
@@ -389,7 +381,9 @@ const Nodecard = ({
 
                         {/* 3. Footer Action */}
                         {assignedTo === loggedInMember &&
-                            status !== "completed" && (
+                            status !== "completed" &&
+                            status !== "stuck" && // ✨ NEW: Hide if stuck
+                            status !== "in need" && ( // ✨ NEW: Hide if in need
                                 <div className="px-5 py-3.5 bg-gray-50 border-t border-gray-100 flex-shrink-0">
                                     <motion.button
                                         onClick={onMarkCompleted}
