@@ -55,12 +55,12 @@ body::-webkit-scrollbar {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 3rem;
+    padding: 2rem; /* Reduced from 3rem */
     text-align: center;
     border-top-right-radius: 40px;
     border-bottom-right-radius: 40px;
     position: relative;
-    overflow: hidden;
+    overflow-y: auto; /* ✨ CHANGED: Allows scrolling if height drops below ~600px */
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     transition: all 0.5s ease;
 }
@@ -118,8 +118,8 @@ body::-webkit-scrollbar {
 
 .login-subtext {
     color: #64748b;
-    margin-bottom: 2rem;
-    font-size: 1.1rem;
+    margin-bottom: 1rem; /* Reduced from 2rem */
+    font-size: 1rem; /* Slightly reduced */
     line-height: 1.5;
     max-width: 400px;
 }
@@ -127,7 +127,7 @@ body::-webkit-scrollbar {
 .login-form {
     display: flex;
     flex-direction: column;
-    gap: 1.2rem;
+    gap: 0.8rem; /* Reduced from 1.2rem */
     width: 100%;
     max-width: 400px;
 }
@@ -145,10 +145,10 @@ body::-webkit-scrollbar {
 }
 
 .login-input {
-    padding: 0.9rem 1rem 0.9rem 2.5rem;
+    padding: 0.6rem 1rem 0.6rem 2.5rem; /* Reduced vertical padding from 0.9rem */
     border-radius: 12px;
     border: 1px solid #e2e8f0;
-    font-size: 1rem;
+    font-size: 0.95rem; /* Slightly scaled down text to match slimmer box */
     width: 100%;
     transition: all 0.3s ease;
     background: #f8fafc;
@@ -181,7 +181,7 @@ body::-webkit-scrollbar {
 }
 
 .login-button {
-    padding: 1rem;
+    padding: 0.75rem; /* Reduced from 1rem */
     background: #3b82f6;
     color: #fff;
     font-weight: 600;
@@ -224,7 +224,7 @@ body::-webkit-scrollbar {
     text-align: center;
     font-size: 0.85rem;
     color: #94a3b8;
-    margin: 0.8rem 0;
+    margin: 0.5rem 0; /* Reduced from 0.8rem */
     display: flex;
     align-items: center;
 }
@@ -250,10 +250,10 @@ body::-webkit-scrollbar {
     justify-content: center;
     gap: 0.5rem;
     border: 1px solid #e2e8f0;
-    padding: 0.8rem;
+    padding: 0.6rem; /* Reduced from 0.8rem */
     border-radius: 12px;
     background: white;
-    font-size: 1rem;
+    font-size: 0.95rem;
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
@@ -271,9 +271,9 @@ body::-webkit-scrollbar {
 
 .signup-prompt {
     text-align: center;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     color: #64748b;
-    margin-top: 1.5rem;
+    margin-top: 0.5rem; /* Reduced from 1.5rem */
     padding: 0.5rem;
     border-radius: 8px;
     transition: all 0.3s ease;

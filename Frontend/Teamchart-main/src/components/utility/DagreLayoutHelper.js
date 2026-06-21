@@ -1,49 +1,58 @@
 import dagre from "dagre";
 
-const nodeWidth = 260;
-const nodeHeight = 100;
-
 const dagreGraph = new dagre.graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));
 
-// direction = TB (top-bottom), LR (left-right)
-export const layoutNodesWithDagre = (nodes, edges, direction = "TB") => {
-  dagreGraph.setGraph({ rankdir: direction });
+// ✨ FIX 1: Explicitly define the dimensions of your RectangularNode.
+// Looking at your screenshot, they are roughly 300px wide and 200px tall.
+const NODE_WIDTH = 300;
+const NODE_HEIGHT = 200;
 
-  const getNodeSize = (type) => {
-    switch (type) {
-      case "card":
-        return { width: 360, height: 200 };
-      default:
-        return { width: 172, height: 36 }; // circle fallback
-    }
-  };
+export const layoutNodesWithDagre = (nodes, edges, direction = "LR") => {
+    // ✨ FIX 2: Set spacing margins between nodes
+    dagreGraph.setGraph({
+        rankdir: direction,
+        nodesep: 50, // Vertical gap between nodes in the same column
+        ranksep: 100, // Horizontal gap between connected nodes (the length of the arrow)
+    });
 
-  nodes.forEach((node) => {
-    const { width, height } = getNodeSize(node.type);
-    dagreGraph.setNode(node.id, { width, height });
-  });
+    // 1. Add nodes to Dagre with strict dimensions
+    nodes.forEach((node) => {
+        dagreGraph.setNode(node.id, {
+            // ReactFlow usually populates node.width/height after first render,
+            // but we fallback to our constants if it's not ready yet.
+            width: node.width || NODE_WIDTH,
+            height: node.height || NODE_HEIGHT,
+        });
+    });
 
-  edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target);
-  });
+    // 2. Add edges to Dagre
+    edges.forEach((edge) => {
+        dagreGraph.setEdge(edge.source, edge.target);
+    });
 
-  dagre.layout(dagreGraph);
+    // 3. Execute the math
+    dagre.layout(dagreGraph);
 
-  const isHorizontal = direction === "LR";
+    // 4. Map the calculated positions back to ReactFlow format
+    const layoutedNodes = nodes.map((node) => {
+        const nodeWithPosition = dagreGraph.node(node.id);
 
-  return nodes.map((node) => {
-    const nodeWithPosition = dagreGraph.node(node.id);
-    node.targetPosition = isHorizontal ? "left" : "top";
-    node.sourcePosition = isHorizontal ? "right" : "bottom";
+        // ✨ FIX 3: Offset correction.
+        // Dagre returns the (x,y) of the CENTER of the node.
+        // ReactFlow draws nodes from the TOP-LEFT corner.
+        // We must subtract half the width/height to center them correctly.
+        const actualWidth = node.width || NODE_WIDTH;
+        const actualHeight = node.height || NODE_HEIGHT;
 
-    // Centering the node since dagre returns top-left corner
-    const { width, height } = getNodeSize(node.type);
-    node.position = {
-      x: nodeWithPosition.x - width / 2,
-      y: nodeWithPosition.y - height / 2,
-    };
+        return {
+            ...node,
+            position: {
+                x: nodeWithPosition.x - actualWidth / 2,
+                y: nodeWithPosition.y - actualHeight / 2,
+            },
+        };
+    });
 
-    return node;
-  });
+    return layoutedNodes;
 };
