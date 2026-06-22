@@ -120,7 +120,11 @@ const Content = ({ selectedProjectId, projectName }) => {
     useEffect(() => {
         if (!selectedProjectId) return;
 
-        const socket = new SockJS("http://localhost:8080/ws"); // Adjust to your backend URL!
+        // ✨ CHANGED: Use your environment variable, or hardcode your Render URL!
+        // (Make sure you use your ACTUAL Render URL here if you don't have an env variable setup)
+        const BACKEND_URL = process.env.REACT_APP_API_URL;
+
+        const socket = new SockJS(`${BACKEND_URL}/ws`);
         const client = new Client({
             webSocketFactory: () => socket,
             onConnect: () => {
