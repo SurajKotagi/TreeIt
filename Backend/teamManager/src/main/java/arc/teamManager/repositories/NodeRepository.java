@@ -14,7 +14,7 @@ import arc.teamManager.entities.GraphNode;
 @Repository
 public interface NodeRepository extends JpaRepository<GraphNode, String> {
     List<GraphNode> findByProjectId(String projectId);
-    
+
     List<GraphNode> findByAssignedTo(String assignedTo);
 
     @Modifying
@@ -26,4 +26,7 @@ public interface NodeRepository extends JpaRepository<GraphNode, String> {
     @Transactional
     @Query("DELETE FROM GraphNode n WHERE n.projectId = :projectId")
     void deleteAllByProjectId(@Param("projectId") String projectId);
+
+    // Finds all tasks assigned to the user where the status is NOT "completed"
+    List<GraphNode> findByAssignedToAndStatusNot(String assignedTo, String status);
 }

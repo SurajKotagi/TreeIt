@@ -29,7 +29,7 @@ public class ProjectService {
         // Convert Member entities to DTOs
         return project.getMembers()
                 .stream()
-                .map(member -> new MemberDTO(member.getMemberId(), member.getUsername()))
+                .map(member -> new MemberDTO(member.getMemberId(), member.getUsername(), member.getAvatarUrl()))
                 .collect(Collectors.toList());
     }
 

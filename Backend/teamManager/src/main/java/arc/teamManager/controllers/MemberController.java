@@ -2,6 +2,8 @@ package arc.teamManager.controllers;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.HashMap;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -19,16 +21,22 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import arc.teamManager.entities.Member;
+import arc.teamManager.entities.Project;
 import arc.teamManager.entities.GraphNode;
 import arc.teamManager.entities.ActivityLog;
 import arc.teamManager.repositories.MemberRepository;
 import arc.teamManager.repositories.NodeRepository;
+import arc.teamManager.repositories.ProjectRepository;
 import arc.teamManager.services.CloudinaryService;
 import arc.teamManager.repositories.ActivityLogRepository;
 import arc.teamManager.dto.MemberAnalyticsDTO;
+import arc.teamManager.dto.MemberTaskDTO;
 
 @RestController
 public class MemberController {
+    @Autowired
+    private ProjectRepository projectRepository;
+
     @Autowired
     MemberRepository memberRepository;
 
@@ -144,4 +152,36 @@ public class MemberController {
                     .body("Failed to upload profile picture");
         }
     }
+
+    @GetMapping("/members/{username}/tasks/incomplete")
+    public ResponseEntity<List<MemberTaskDTO>> getIncompleteTasks(@PathVariable String username) {
+
+        // ✨ Fetch the member to get their avatar URL
+        Member member = memberRepository.findByUsername(username).orElse(null);
+        String avatarUrl = (member != null) ? member.getAvatarUrl() : null;
+
+        List<GraphNode> incompleteNodes = nodeRepository.findByAssignedToAndStatusNot(username, "completed");
+
+        List<MemberTaskDTO> taskList = incompleteNodes.stream().map(node -> {
+            String projectName = "Ungrouped Tasks";
+            if (node.getProjectId() != null) {
+                Optional<Project> projectOpt = projectRepository.findById(Long.valueOf(node.getProjectId()));
+                if (projectOpt.isPresent()) {
+                    projectName = projectOpt.get().getName();
+                }
+            }
+
+            String displayStatus = node.getStatus() != null ? node.getStatus().replace("_", " ") : "Pending";
+
+            // ✨ Pass the avatarUrl into the DTO
+            return new MemberTaskDTO(
+                    projectName,
+                    node.getTask(),
+                    displayStatus,
+                    avatarUrl);
+        }).collect(Collectors.toList());
+
+        return ResponseEntity.ok(taskList);
+    }
+
 }

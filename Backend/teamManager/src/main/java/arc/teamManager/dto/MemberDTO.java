@@ -3,10 +3,13 @@ package arc.teamManager.dto;
 public class MemberDTO {
     private Long memberId;
     private String username;
+    private String avatarUrl; // ✨ NEW: Added avatarUrl field
 
-    public MemberDTO(Long memberId, String username) {
+    // ✨ UPDATED: Constructor now accepts avatarUrl
+    public MemberDTO(Long memberId, String username, String avatarUrl) {
         this.memberId = memberId;
         this.username = username;
+        this.avatarUrl = avatarUrl;
     }
 
     public Long getMemberId() {
@@ -23,6 +26,15 @@ public class MemberDTO {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    // ✨ NEW: Getter and Setter for avatarUrl
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
     }
 
 }

@@ -6,12 +6,17 @@ import {
     FaPlus,
     FaRegLightbulb,
     FaChevronRight,
+    FaUsers, // ✨ NEW
+    FaTimes, // ✨ NEW
+    FaTasks, // ✨ NEW
 } from "react-icons/fa";
 import CustomDropdown from "../components/ui/CustomDropdown";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { forwardRef } from "react";
 import { FaCalendarAlt } from "react-icons/fa";
+import api from "../components/utility/BaseAPI"; // ✨ NEW: Adjust path if necessary
+import Avatar from "boring-avatars"; // ✨ NEW
 
 const CustomDateInput = forwardRef(({ value, onClick }, ref) => (
     <div className="relative w-full cursor-pointer" onClick={onClick} ref={ref}>
@@ -47,6 +52,39 @@ const RightsidePanel = ({
     ];
 
     const randomTip = tips[Math.floor(Math.random() * tips.length)];
+
+    // ✨ NEW: State for Team Workload Modal
+    const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+    const [selectedMember, setSelectedMember] = useState(null);
+    const [memberTasks, setMemberTasks] = useState([]);
+    const [isLoadingTasks, setIsLoadingTasks] = useState(false);
+
+    // ✨ NEW: Fetch and group member tasks
+    const handleMemberClick = async (member) => {
+        setSelectedMember(member);
+        setIsLoadingTasks(true);
+        try {
+            // ⚠️ Ensure this endpoint exists in your Spring Boot backend!
+            // It should return an array of tasks with their associated project names
+            const res = await api.get(
+                `/members/${member.username}/tasks/incomplete`,
+            );
+            setMemberTasks(res.data || []);
+        } catch (error) {
+            console.error("Failed to fetch tasks", error);
+            setMemberTasks([]);
+        } finally {
+            setIsLoadingTasks(false);
+        }
+    };
+
+    // ✨ NEW: Group tasks by project name for the UI
+    const groupedTasks = memberTasks.reduce((acc, task) => {
+        const pName = task.projectName || "Other Tasks";
+        if (!acc[pName]) acc[pName] = [];
+        acc[pName].push(task);
+        return acc;
+    }, {});
 
     return (
         <AnimatePresence>
@@ -230,6 +268,22 @@ const RightsidePanel = ({
                                 </span>
                             </motion.button>
 
+                            {/* ✨ NEW: View Team Workload Button */}
+                            <motion.button
+                                onClick={() => setIsTeamModalOpen(true)}
+                                whileHover={{
+                                    scale: 1.01,
+                                    backgroundColor: "#f8fafc",
+                                }}
+                                whileTap={{ scale: 0.98 }}
+                                className="w-full flex items-center justify-start pl-6 gap-3 bg-white border border-blue-200 text-blue-600 py-2.5 rounded-xl font-bold transition-all shadow-sm hover:shadow-md mt-2 group"
+                            >
+                                <FaUsers className="text-blue-500 group-hover:text-blue-600" />
+                                <span className="text-[14px] tracking-wide">
+                                    Team Workload
+                                </span>
+                            </motion.button>
+
                             {/* Pro Tip (Matching the new Purple theme) */}
                             <AnimatePresence>
                                 {showTip && (
@@ -250,6 +304,254 @@ const RightsidePanel = ({
                     </motion.div>
                 </motion.div>
             )}
+            {/* ✨ NEW: Team Workload Split Modal */}
+            <AnimatePresence>
+                {isTeamModalOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.95, y: 20 }}
+                            className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[75vh] flex overflow-hidden border border-gray-200 relative"
+                        >
+                            {/* Close Button */}
+                            <button
+                                onClick={() => setIsTeamModalOpen(false)}
+                                className="absolute top-4 right-4 z-10 bg-gray-100 hover:bg-gray-200 text-gray-500 p-2 rounded-full transition-colors"
+                            >
+                                <FaTimes size={14} />
+                            </button>
+
+                            {/* LEFT PANE: Member List */}
+                            <div className="w-1/3 bg-gray-50 flex flex-col border-r border-gray-200">
+                                <div className="px-5 py-4 border-b border-gray-200 bg-white shadow-sm z-10">
+                                    <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                                        <FaUsers className="text-blue-500" />{" "}
+                                        Project Team
+                                    </h3>
+                                    <p className="text-xs text-gray-500 mt-0.5">
+                                        Select a member to view pending tasks
+                                    </p>
+                                </div>
+                                <div className="flex-1 overflow-y-auto p-3 space-y-1 custom-scrollbar">
+                                    {projectMembers &&
+                                    projectMembers.length > 0 ? (
+                                        projectMembers.map((member) => (
+                                            <button
+                                                key={
+                                                    member.memberId ||
+                                                    member._id
+                                                }
+                                                onClick={() =>
+                                                    handleMemberClick(member)
+                                                }
+                                                className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${
+                                                    selectedMember?.username ===
+                                                    member.username
+                                                        ? "bg-blue-100 border border-blue-200 shadow-sm"
+                                                        : "bg-transparent border border-transparent hover:bg-gray-100"
+                                                }`}
+                                            >
+                                                {/* ✨ UPDATED: Left Pane Avatar with Cloudinary support */}
+                                                <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-white">
+                                                    {member.avatarUrl ? (
+                                                        <img
+                                                            src={
+                                                                member.avatarUrl
+                                                            }
+                                                            alt={
+                                                                member.username
+                                                            }
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <Avatar
+                                                            size={32}
+                                                            name={
+                                                                member.username
+                                                            }
+                                                            variant="beam"
+                                                            colors={[
+                                                                "#f77272",
+                                                                "#fabd23",
+                                                                "#49de80",
+                                                                "#3b82f6",
+                                                                "#c083fc",
+                                                            ]}
+                                                        />
+                                                    )}
+                                                </div>
+                                                <span
+                                                    className={`font-semibold text-sm ${selectedMember?.username === member.username ? "text-blue-700" : "text-gray-700"}`}
+                                                >
+                                                    {member.username}
+                                                </span>
+                                            </button>
+                                        ))
+                                    ) : (
+                                        <div className="text-center text-sm text-gray-400 mt-10 italic">
+                                            No members assigned.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* RIGHT PANE: Analytics & Tasks */}
+                            <div className="w-2/3 bg-white flex flex-col">
+                                {!selectedMember ? (
+                                    <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
+                                        <FaTasks
+                                            size={48}
+                                            className="mb-4 opacity-20"
+                                        />
+                                        <p className="text-sm font-medium">
+                                            Select a team member to view their
+                                            universal workload.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {/* Right Pane Header */}
+                                        <div className="px-8 py-6 border-b border-gray-100 flex-shrink-0 flex items-center justify-between">
+                                            <div>
+                                                <h2 className="text-2xl font-bold text-gray-800 tracking-tight">
+                                                    {selectedMember.username}'s
+                                                    Workload
+                                                </h2>
+                                                <p className="text-sm text-red-500 font-semibold mt-1">
+                                                    Showing all incomplete tasks
+                                                </p>
+                                            </div>
+                                            {/* ✨ UPDATED: Right Pane Header Avatar with Cloudinary support */}
+                                            <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-md flex-shrink-0 bg-white">
+                                                {selectedMember.avatarUrl ? (
+                                                    <img
+                                                        src={
+                                                            selectedMember.avatarUrl
+                                                        }
+                                                        alt={
+                                                            selectedMember.username
+                                                        }
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                ) : memberTasks.length > 0 &&
+                                                  memberTasks[0].avatarUrl ? (
+                                                    <img
+                                                        src={
+                                                            memberTasks[0]
+                                                                .avatarUrl
+                                                        }
+                                                        alt={
+                                                            selectedMember.username
+                                                        }
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <Avatar
+                                                        size={48}
+                                                        name={
+                                                            selectedMember.username
+                                                        }
+                                                        variant="beam"
+                                                        colors={[
+                                                            "#f77272",
+                                                            "#fabd23",
+                                                            "#49de80",
+                                                            "#3b82f6",
+                                                            "#c083fc",
+                                                        ]}
+                                                    />
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Task List */}
+                                        <div className="flex-1 overflow-y-auto px-8 py-6 custom-scrollbar bg-gray-50/30">
+                                            {isLoadingTasks ? (
+                                                <div className="flex items-center justify-center h-full">
+                                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                                                </div>
+                                            ) : Object.keys(groupedTasks)
+                                                  .length === 0 ? (
+                                                <div className="flex flex-col items-center justify-center h-full text-green-500">
+                                                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-3 shadow-inner">
+                                                        <FaRegLightbulb
+                                                            size={24}
+                                                        />
+                                                    </div>
+                                                    <p className="text-sm font-bold">
+                                                        Awesome! No pending
+                                                        tasks.
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-6">
+                                                    {Object.entries(
+                                                        groupedTasks,
+                                                    ).map(
+                                                        ([
+                                                            projectName,
+                                                            tasks,
+                                                        ]) => (
+                                                            <div
+                                                                key={
+                                                                    projectName
+                                                                }
+                                                                className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm"
+                                                            >
+                                                                <div className="bg-gray-100 px-4 py-2 border-b border-gray-200">
+                                                                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                                                        Project:{" "}
+                                                                        <span className="text-gray-800">
+                                                                            {
+                                                                                projectName
+                                                                            }
+                                                                        </span>
+                                                                    </span>
+                                                                </div>
+                                                                <ul className="divide-y divide-gray-100">
+                                                                    {tasks.map(
+                                                                        (
+                                                                            task,
+                                                                            idx,
+                                                                        ) => (
+                                                                            <li
+                                                                                key={
+                                                                                    idx
+                                                                                }
+                                                                                className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                                                                            >
+                                                                                <span className="text-sm font-medium text-gray-700">
+                                                                                    {
+                                                                                        task.task
+                                                                                    }
+                                                                                </span>
+                                                                                <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-amber-100 text-amber-700 border border-amber-200">
+                                                                                    {task.status ||
+                                                                                        "Pending"}
+                                                                                </span>
+                                                                            </li>
+                                                                        ),
+                                                                    )}
+                                                                </ul>
+                                                            </div>
+                                                        ),
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </AnimatePresence>
     );
 };
