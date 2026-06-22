@@ -5,6 +5,10 @@ import React, {
     useRef,
     useMemo,
 } from "react";
+import { useViewport } from "reactflow";
+import { Client } from "@stomp/stompjs";
+import SockJS from "sockjs-client";
+import { FaLocationArrow } from "react-icons/fa"; // Using this as the cursor pointer!
 import ReactFlow, {
     MiniMap,
     Controls,
@@ -100,6 +104,80 @@ const Content = ({ selectedProjectId, projectName }) => {
     const [isFetchingGraph, setIsFetchingGraph] = useState(true);
     const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
     const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
+    // ✨ LIVE CURSOR STATES ✨
+    const [cursors, setCursors] = useState({});
+    const stompClient = useRef(null);
+    const viewport = useViewport(); // Gets current pan/zoom so cursors stick to the canvas
+    const lastMouseUpdate = useRef(0);
+
+    // Pick a random cursor color for this user once
+    const [myCursorColor] = useState(() => {
+        const colors = ["#f77272", "#fabd23", "#49de80", "#3b82f6", "#c083fc"];
+        return colors[Math.floor(Math.random() * colors.length)];
+    });
+
+    // 1. Establish WebSocket Connection
+    useEffect(() => {
+        if (!selectedProjectId) return;
+
+        const socket = new SockJS("http://localhost:8080/ws"); // Adjust to your backend URL!
+        const client = new Client({
+            webSocketFactory: () => socket,
+            onConnect: () => {
+                // Subscribe to this specific project's cursor movements
+                client.subscribe(
+                    `/topic/cursors/${selectedProjectId}`,
+                    (message) => {
+                        const data = JSON.parse(message.body);
+                        const currentUsername =
+                            localStorage.getItem("username");
+
+                        // Don't render our own cursor
+                        if (data.username !== currentUsername) {
+                            setCursors((prev) => ({
+                                ...prev,
+                                [data.username]: data,
+                            }));
+                        }
+                    },
+                );
+            },
+        });
+
+        client.activate();
+        stompClient.current = client;
+
+        return () => client.deactivate(); // Cleanup on unmount or project change
+    }, [selectedProjectId]);
+
+    // 2. Capture and Broadcast Mouse Movement
+    const handleMouseMove = useCallback(
+        (e) => {
+            if (!stompClient.current?.connected || !reactFlowInstance) return;
+
+            // Throttle updates to ~20 frames per second to save bandwidth
+            const now = Date.now();
+            if (now - lastMouseUpdate.current < 50) return;
+            lastMouseUpdate.current = now;
+
+            // Convert the raw screen pixels into React Flow's graph coordinates
+            const position = reactFlowInstance.screenToFlowPosition({
+                x: e.clientX,
+                y: e.clientY,
+            });
+
+            stompClient.current.publish({
+                destination: `/app/cursor.move/${selectedProjectId}`,
+                body: JSON.stringify({
+                    username: localStorage.getItem("username"),
+                    x: position.x,
+                    y: position.y,
+                    color: myCursorColor,
+                }),
+            });
+        },
+        [reactFlowInstance, selectedProjectId, myCursorColor],
+    );
 
     // Activity Log Handler
     const logActivity = async (actionMessage) => {
@@ -746,246 +824,286 @@ const Content = ({ selectedProjectId, projectName }) => {
     };
 
     return (
-        <ReactFlow
-            ref={ref}
-            nodes={filteredNodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onNodeClick={onNodeClick}
-            onInit={setReactFlowInstance}
-            onDrop={onDrop}
-            onDragOver={onDragOver}
-            onEdgeUpdate={onEdgeUpdate}
-            onEdgeUpdateStart={onEdgeUpdateStart}
-            onEdgeUpdateEnd={onEdgeUpdateEnd}
-            defaultEdgeOptions={edgeStyle}
-            connectionLineComponent={customEdgeLine}
-            onPaneClick={onPaneClick}
-            onNodeContextMenu={onNodeContextMenu}
-            nodeTypes={nodeTypes}
-            proOptions={{ hideAttribution: true }}
-            fitView
-        >
-            {/* Rightside panel */}
-            <RightsidePanel
-                isOpen={isRightPanelOpen}
-                closePanel={() => setIsRightPanelOpen(false)}
-                projectMembers={projectMembers}
-                newNodeInput={newNodeInput}
-                setNewNodeInput={setNewNodeInput}
-                description={description}
-                setDescription={setDescription}
-                handleCreateNode={handleCreateNode}
-                saveGraph={saveGraph}
-                onClick={handleDownload}
-            />
+        // ✨ Add onPointerMove here to track the mouse across the whole graph area
+        <div className="w-full h-full relative" onPointerMove={handleMouseMove}>
+            {/* ✨ RENDER REMOTE CURSORS ON TOP OF THE GRAPH ✨ */}
+            {Object.values(cursors).map((cursor) => {
+                // Math magic: Convert graph coordinates back to screen pixels based on current zoom/pan!
+                const screenX = cursor.x * viewport.zoom + viewport.x;
+                const screenY = cursor.y * viewport.zoom + viewport.y;
 
-            {/* ✨ UNIFIED TOP-LEFT CONTROL PILL ✨ */}
-            <Panel
-                position="top-left"
-                className="mt-5 ml-5 bg-white/80 backdrop-blur-md p-1.5 pr-5 rounded-xl shadow-sm border border-gray-200 flex items-center gap-3"
+                return (
+                    <motion.div
+                        key={cursor.username}
+                        animate={{ x: screenX, y: screenY }}
+                        transition={{
+                            type: "spring",
+                            stiffness: 300,
+                            damping: 25,
+                            mass: 0.5,
+                        }}
+                        className="absolute top-0 left-0 z-50 pointer-events-none flex flex-col items-start"
+                        style={{ originX: 0, originY: 0 }}
+                    >
+                        <FaLocationArrow
+                            size={16}
+                            style={{
+                                color: cursor.color,
+                                transform: "rotate(-45deg)",
+                                filter: "drop-shadow(0px 2px 2px rgba(0,0,0,0.2))",
+                            }}
+                        />
+                        <div
+                            className="px-2 py-0.5 rounded-full text-white text-[10px] font-bold shadow-md ml-3"
+                            style={{ backgroundColor: cursor.color }}
+                        >
+                            {cursor.username}
+                        </div>
+                    </motion.div>
+                );
+            })}
+            <ReactFlow
+                ref={ref}
+                nodes={filteredNodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onNodeClick={onNodeClick}
+                onInit={setReactFlowInstance}
+                onDrop={onDrop}
+                onDragOver={onDragOver}
+                onEdgeUpdate={onEdgeUpdate}
+                onEdgeUpdateStart={onEdgeUpdateStart}
+                onEdgeUpdateEnd={onEdgeUpdateEnd}
+                defaultEdgeOptions={edgeStyle}
+                connectionLineComponent={customEdgeLine}
+                onPaneClick={onPaneClick}
+                onNodeContextMenu={onNodeContextMenu}
+                nodeTypes={nodeTypes}
+                proOptions={{ hideAttribution: true }}
+                fitView
             >
-                {/* 1. Integrated Left Sidebar Toggle */}
-                <motion.button
-                    onClick={() =>
-                        isSidebarOpen ? closeSidebar() : openSidebar()
-                    }
-                    className="w-9 h-9 flex items-center justify-center bg-white border border-gray-100 hover:bg-blue-50 text-gray-500 hover:text-blue-600 hover:border-blue-200 rounded-lg shadow-sm transition-all"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    title="Toggle Projects Sidebar"
+                {/* Rightside panel */}
+                <RightsidePanel
+                    isOpen={isRightPanelOpen}
+                    closePanel={() => setIsRightPanelOpen(false)}
+                    projectMembers={projectMembers}
+                    newNodeInput={newNodeInput}
+                    setNewNodeInput={setNewNodeInput}
+                    description={description}
+                    setDescription={setDescription}
+                    handleCreateNode={handleCreateNode}
+                    saveGraph={saveGraph}
+                    onClick={handleDownload}
+                />
+
+                {/* ✨ UNIFIED TOP-LEFT CONTROL PILL ✨ */}
+                <Panel
+                    position="top-left"
+                    className="mt-5 ml-5 bg-white/80 backdrop-blur-md p-1.5 pr-5 rounded-xl shadow-sm border border-gray-200 flex items-center gap-3"
                 >
-                    <FaBars size={14} />
-                </motion.button>
+                    {/* 1. Integrated Left Sidebar Toggle */}
+                    <motion.button
+                        onClick={() =>
+                            isSidebarOpen ? closeSidebar() : openSidebar()
+                        }
+                        className="w-9 h-9 flex items-center justify-center bg-white border border-gray-100 hover:bg-blue-50 text-gray-500 hover:text-blue-600 hover:border-blue-200 rounded-lg shadow-sm transition-all"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        title="Toggle Projects Sidebar"
+                    >
+                        <FaBars size={14} />
+                    </motion.button>
 
-                {/* 2. Vertical Divider */}
-                <div className="w-[1px] h-5 bg-gray-200"></div>
+                    {/* 2. Vertical Divider */}
+                    <div className="w-[1px] h-5 bg-gray-200"></div>
 
-                {/* 3. Project Status Breadcrumb */}
-                <div className="flex items-center gap-2.5">
-                    <div className="relative flex h-2.5 w-2.5">
-                        {selectedProjectId && (
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                        )}
-                        <span
-                            className={`relative inline-flex rounded-full h-2.5 w-2.5 ${selectedProjectId ? "bg-blue-500" : "bg-gray-400"}`}
-                        ></span>
+                    {/* 3. Project Status Breadcrumb */}
+                    <div className="flex items-center gap-2.5">
+                        <div className="relative flex h-2.5 w-2.5">
+                            {selectedProjectId && (
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                            )}
+                            <span
+                                className={`relative inline-flex rounded-full h-2.5 w-2.5 ${selectedProjectId ? "bg-blue-500" : "bg-gray-400"}`}
+                            ></span>
+                        </div>
+
+                        {/* CHANGED: Removed 'uppercase' and 'tracking-wider' to keep natural casing! */}
+                        <div className="text-sm font-semibold text-gray-700 mt-0.5">
+                            {selectedProjectId
+                                ? projectName || "Unnamed Project"
+                                : "No Project Selected"}
+                        </div>
                     </div>
+                </Panel>
 
-                    {/* CHANGED: Removed 'uppercase' and 'tracking-wider' to keep natural casing! */}
-                    <div className="text-sm font-semibold text-gray-700 mt-0.5">
-                        {selectedProjectId
-                            ? projectName || "Unnamed Project"
-                            : "No Project Selected"}
-                    </div>
-                </div>
-            </Panel>
-
-            {/* ✨ TOP-RIGHT GLOBAL ACTIONS ✨ */}
-            <Panel
-                position="top-right"
-                className="mt-5 mr-5 flex gap-3 z-40"
-                style={{
-                    transition: "transform 0.3s ease-in-out",
-                    transform: isRightPanelOpen
-                        ? "translateX(-340px)"
-                        : "translateX(0px)",
-                }}
-            >
-                {/* Smart Autosave Button */}
-                <motion.button
-                    onClick={saveGraph}
-                    whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.97 }}
-                    disabled={isAutosaving || saveStatus === "Saved"}
-                    className={`group flex items-center justify-center gap-2 bg-white/80 backdrop-blur-md border px-4 py-2.5 rounded-xl font-medium transition-all shadow-sm
+                {/* ✨ TOP-RIGHT GLOBAL ACTIONS ✨ */}
+                <Panel
+                    position="top-right"
+                    className="mt-5 mr-5 flex gap-3 z-40"
+                    style={{
+                        transition: "transform 0.3s ease-in-out",
+                        transform: isRightPanelOpen
+                            ? "translateX(-340px)"
+                            : "translateX(0px)",
+                    }}
+                >
+                    {/* Smart Autosave Button */}
+                    <motion.button
+                        onClick={saveGraph}
+                        whileHover={{ y: -2 }}
+                        whileTap={{ scale: 0.97 }}
+                        disabled={isAutosaving || saveStatus === "Saved"}
+                        className={`group flex items-center justify-center gap-2 bg-white/80 backdrop-blur-md border px-4 py-2.5 rounded-xl font-medium transition-all shadow-sm
                         ${saveStatus === "Unsaved" ? "border-amber-300 text-amber-600 hover:bg-amber-50" : ""}
                         ${saveStatus === "Saving..." ? "border-blue-300 text-blue-500 opacity-80 cursor-wait" : ""}
                         ${saveStatus === "Saved" ? "border-gray-200 text-gray-500 cursor-default" : "border-gray-200 text-gray-700 hover:text-indigo-600"}
                     `}
-                >
-                    {saveStatus === "Saving..." ? (
-                        // A spinning icon while communicating with backend
-                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                    ) : saveStatus === "Saved" ? (
-                        <FaCheckCircle className="text-green-500" />
-                    ) : (
-                        <FaSave
-                            className={`${saveStatus === "Unsaved" ? "text-amber-500" : "text-gray-400 group-hover:text-indigo-500"} transition-colors`}
-                        />
-                    )}
+                    >
+                        {saveStatus === "Saving..." ? (
+                            // A spinning icon while communicating with backend
+                            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                        ) : saveStatus === "Saved" ? (
+                            <FaCheckCircle className="text-green-500" />
+                        ) : (
+                            <FaSave
+                                className={`${saveStatus === "Unsaved" ? "text-amber-500" : "text-gray-400 group-hover:text-indigo-500"} transition-colors`}
+                            />
+                        )}
 
-                    {saveStatus === "Unsaved" ? "Save Now" : saveStatus}
-                </motion.button>
+                        {saveStatus === "Unsaved" ? "Save Now" : saveStatus}
+                    </motion.button>
 
-                {/* Export Button (unchanged) */}
-                <motion.button
-                    onClick={handleDownload}
-                    whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.97 }}
-                    className="group flex items-center justify-center gap-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-700 hover:text-indigo-600 hover:bg-gray-50 hover:border-gray-300 px-4 py-2.5 rounded-xl font-medium transition-all shadow-sm"
-                >
-                    <FaDownload className="text-gray-400 group-hover:text-indigo-500 transition-colors" />{" "}
-                    Export
-                </motion.button>
+                    {/* Export Button (unchanged) */}
+                    <motion.button
+                        onClick={handleDownload}
+                        whileHover={{ y: -2 }}
+                        whileTap={{ scale: 0.97 }}
+                        className="group flex items-center justify-center gap-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-700 hover:text-indigo-600 hover:bg-gray-50 hover:border-gray-300 px-4 py-2.5 rounded-xl font-medium transition-all shadow-sm"
+                    >
+                        <FaDownload className="text-gray-400 group-hover:text-indigo-500 transition-colors" />{" "}
+                        Export
+                    </motion.button>
 
-                {/* Logs Button */}
-                <motion.button
-                    onClick={() => setIsLogsModalOpen(true)}
-                    whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.97 }}
-                    className="group flex items-center justify-center gap-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300 px-4 py-2.5 rounded-xl font-medium transition-all shadow-sm"
-                >
-                    <FaHistory className="text-gray-400 group-hover:text-indigo-500 transition-colors" />{" "}
-                    Logs
-                </motion.button>
+                    {/* Logs Button */}
+                    <motion.button
+                        onClick={() => setIsLogsModalOpen(true)}
+                        whileHover={{ y: -2 }}
+                        whileTap={{ scale: 0.97 }}
+                        className="group flex items-center justify-center gap-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300 px-4 py-2.5 rounded-xl font-medium transition-all shadow-sm"
+                    >
+                        <FaHistory className="text-gray-400 group-hover:text-indigo-500 transition-colors" />{" "}
+                        Logs
+                    </motion.button>
 
-                {/* ✨ NEW: Sign Out Button */}
-                <motion.button
-                    onClick={handleSignOut}
-                    whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.97 }}
-                    className="group flex items-center justify-center gap-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-700 hover:text-red-600 hover:bg-red-50 hover:border-red-200 px-4 py-2.5 rounded-xl font-medium transition-all shadow-sm"
-                >
-                    <FaSignOutAlt className="text-gray-400 group-hover:text-red-500 transition-colors" />{" "}
-                    Sign Out
-                </motion.button>
+                    {/* ✨ NEW: Sign Out Button */}
+                    <motion.button
+                        onClick={handleSignOut}
+                        whileHover={{ y: -2 }}
+                        whileTap={{ scale: 0.97 }}
+                        className="group flex items-center justify-center gap-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-700 hover:text-red-600 hover:bg-red-50 hover:border-red-200 px-4 py-2.5 rounded-xl font-medium transition-all shadow-sm"
+                    >
+                        <FaSignOutAlt className="text-gray-400 group-hover:text-red-500 transition-colors" />{" "}
+                        Sign Out
+                    </motion.button>
 
-                {/* ✨ NEW: Button to re-open the Right Panel when it's closed */}
-                <AnimatePresence>
-                    {!isRightPanelOpen && (
-                        <motion.button
-                            initial={{ opacity: 0, scale: 0.8, x: 20 }}
-                            animate={{ opacity: 1, scale: 1, x: 0 }}
-                            exit={{ opacity: 0, scale: 0.8, x: 20 }}
-                            onClick={() => setIsRightPanelOpen(true)}
-                            className="flex items-center justify-center w-10 h-10 ml-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full shadow-sm transition-all"
-                            title="Open Task Configurator"
-                        >
-                            <FaChevronLeft size={14} />
-                        </motion.button>
-                    )}
-                </AnimatePresence>
-            </Panel>
+                    {/* ✨ NEW: Button to re-open the Right Panel when it's closed */}
+                    <AnimatePresence>
+                        {!isRightPanelOpen && (
+                            <motion.button
+                                initial={{ opacity: 0, scale: 0.8, x: 20 }}
+                                animate={{ opacity: 1, scale: 1, x: 0 }}
+                                exit={{ opacity: 0, scale: 0.8, x: 20 }}
+                                onClick={() => setIsRightPanelOpen(true)}
+                                className="flex items-center justify-center w-10 h-10 ml-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full shadow-sm transition-all"
+                                title="Open Task Configurator"
+                            >
+                                <FaChevronLeft size={14} />
+                            </motion.button>
+                        )}
+                    </AnimatePresence>
+                </Panel>
 
-            {/* ✨ MOVED TO BOTTOM-LEFT SAFE ZONE ✨ */}
-            <Controls
-                position="bottom-left"
-                className="bg-white/90 backdrop-blur-sm rounded-lg shadow-sm border border-gray-200 ml-5 mb-5"
-            />
-
-            <MiniMap
-                position="bottom-right"
-                zoomable
-                pannable
-                className="rounded-xl shadow-md overflow-hidden border border-gray-200 mb-5"
-                style={{
-                    transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                    transform: isRightPanelOpen
-                        ? "translateX(-340px)"
-                        : "translateX(0px)",
-                }}
-                nodeBorderRadius={8}
-                // Down in your return block for the MiniMap
-                nodeColor={(node) => {
-                    const statusColors = {
-                        completed: "#10b981",
-                        pending: "#3b82f6",
-                        stuck: "#facc15",
-                        "in need": "#a855f7",
-                        working: "#14b8a6",
-                        busy: "#f97316", // Orange ✨ NEW
-                        unpicked: "#94a3b8",
-                    };
-                    return statusColors[node.data?.status] || "#cbd5e1";
-                }}
-            />
-
-            <Background
-                variant="dots"
-                gap={24}
-                size={2}
-                color="#cbd5e1"
-                style={{ backgroundColor: "#fafafa" }}
-            />
-
-            {/* Node properties on right click */}
-            {menu && (
-                <NodeProperties
-                    onClick={onPaneClick}
-                    logActivity={logActivity}
-                    {...menu}
+                {/* ✨ MOVED TO BOTTOM-LEFT SAFE ZONE ✨ */}
+                <Controls
+                    position="bottom-left"
+                    className="bg-white/90 backdrop-blur-sm rounded-lg shadow-sm border border-gray-200 ml-5 mb-5"
                 />
-            )}
 
-            <ActivityLogModal
-                isOpen={isLogsModalOpen}
-                onClose={() => setIsLogsModalOpen(false)}
-                projectId={selectedProjectId}
-            />
+                <MiniMap
+                    position="bottom-right"
+                    zoomable
+                    pannable
+                    className="rounded-xl shadow-md overflow-hidden border border-gray-200 mb-5"
+                    style={{
+                        transition:
+                            "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                        transform: isRightPanelOpen
+                            ? "translateX(-340px)"
+                            : "translateX(0px)",
+                    }}
+                    nodeBorderRadius={8}
+                    // Down in your return block for the MiniMap
+                    nodeColor={(node) => {
+                        const statusColors = {
+                            completed: "#10b981",
+                            pending: "#3b82f6",
+                            stuck: "#facc15",
+                            "in need": "#a855f7",
+                            working: "#14b8a6",
+                            busy: "#f97316", // Orange ✨ NEW
+                            unpicked: "#94a3b8",
+                        };
+                        return statusColors[node.data?.status] || "#cbd5e1";
+                    }}
+                />
 
-            <Nodecard
-                show={showModal}
-                onClose={() => setShowModal(false)}
-                nodeName={nodeName}
-                description={nodeDescription}
-                todos={todos}
-                isCompleted={isCompleted}
-                assignedTo={selectedNode?.data?.assignedTo}
-                creatorId={selectedNode?.data?.creatorId}
-                onToggleTodo={onToggleTodo}
-                onMarkCompleted={onMarkCompleted}
-                onAddTodo={onAddTodo}
-                status={status}
-                onStatusChange={onStatusChange}
-                nodeData={selectedNode?.data}
-                onDeadlineChange={onDeadlineChange}
-                stuckReason={stuckReason}
-                onStuckReasonChange={onStuckReasonChange}
-            />
-        </ReactFlow>
+                <Background
+                    variant="dots"
+                    gap={24}
+                    size={2}
+                    color="#cbd5e1"
+                    style={{ backgroundColor: "#fafafa" }}
+                />
+
+                {/* Node properties on right click */}
+                {menu && (
+                    <NodeProperties
+                        onClick={onPaneClick}
+                        logActivity={logActivity}
+                        {...menu}
+                    />
+                )}
+
+                <ActivityLogModal
+                    isOpen={isLogsModalOpen}
+                    onClose={() => setIsLogsModalOpen(false)}
+                    projectId={selectedProjectId}
+                />
+
+                <Nodecard
+                    show={showModal}
+                    onClose={() => setShowModal(false)}
+                    nodeName={nodeName}
+                    description={nodeDescription}
+                    todos={todos}
+                    isCompleted={isCompleted}
+                    assignedTo={selectedNode?.data?.assignedTo}
+                    creatorId={selectedNode?.data?.creatorId}
+                    onToggleTodo={onToggleTodo}
+                    onMarkCompleted={onMarkCompleted}
+                    onAddTodo={onAddTodo}
+                    status={status}
+                    onStatusChange={onStatusChange}
+                    nodeData={selectedNode?.data}
+                    onDeadlineChange={onDeadlineChange}
+                    stuckReason={stuckReason}
+                    onStuckReasonChange={onStuckReasonChange}
+                />
+            </ReactFlow>
+        </div>
     );
 };
 
