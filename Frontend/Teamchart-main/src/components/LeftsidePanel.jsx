@@ -14,6 +14,8 @@ import {
     FaUndo,
     FaGripVertical,
     FaCamera,
+    FaTasks, // ✨ NEW
+    FaRegLightbulb, // ✨ NEW
 } from "react-icons/fa";
 import Avatar from "boring-avatars";
 
@@ -45,6 +47,9 @@ const LeftSidebar = ({
     const [localProjects, setLocalProjects] = useState([]);
     const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
     const fileInputRef = useRef(null);
+    // ✨ NEW: State for User Tasks in Profile Modal
+    const [userTasks, setUserTasks] = useState([]);
+    const [isLoadingTasks, setIsLoadingTasks] = useState(false);
 
     // ✨ NEW: Try to load a custom avatar from local storage on mount
     useEffect(() => {
@@ -223,17 +228,35 @@ const LeftSidebar = ({
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, []);
 
+    // ✨ UPDATED: Fetch both Analytics AND Tasks when modal opens
     useEffect(() => {
         if (isProfileModalOpen && username) {
             setLoadingAnalytics(true);
+            setIsLoadingTasks(true);
+
+            // Fetch Analytics
             api.get(`/members/${username}/analytics`)
                 .then((res) => setAnalytics(res.data))
                 .catch((err) =>
                     console.error("Failed to fetch analytics:", err),
                 )
                 .finally(() => setLoadingAnalytics(false));
+
+            // ✨ NEW: Fetch Incomplete Tasks
+            api.get(`/members/${username}/tasks/incomplete`)
+                .then((res) => setUserTasks(res.data || []))
+                .catch((err) => console.error("Failed to fetch tasks:", err))
+                .finally(() => setIsLoadingTasks(false));
         }
     }, [isProfileModalOpen, username]);
+
+    // ✨ NEW: Group tasks by project name for the UI
+    const groupedUserTasks = userTasks.reduce((acc, task) => {
+        const pName = task.projectName || "Other Tasks";
+        if (!acc[pName]) acc[pName] = [];
+        acc[pName].push(task);
+        return acc;
+    }, {});
 
     const availableCandidates = allMembers.filter(
         (member) => !modalProject?.members?.some((m) => m._id === member._id),
@@ -809,32 +832,34 @@ const LeftSidebar = ({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
                     >
                         <motion.div
                             initial={{ scale: 0.9, opacity: 0, y: 20 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.9, opacity: 0, y: 20 }}
                             transition={{ type: "spring", damping: 25 }}
-                            className="bg-white p-8 rounded-2xl w-[90%] max-w-[700px] shadow-2xl relative"
+                            // ✨ CHANGED: Widened max-w to 1100px and constrained height for scrolling
+                            className="bg-white p-6 md:p-8 rounded-2xl w-full max-w-[1100px] max-h-[90vh] flex flex-col shadow-2xl relative"
                         >
                             <motion.button
-                                className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 transition-colors"
+                                className="absolute top-4 right-4 z-20 text-gray-400 hover:text-gray-800 transition-colors bg-white rounded-full p-1 shadow-sm border border-gray-100"
                                 onClick={() => setIsProfileModalOpen(false)}
                                 whileHover={{ scale: 1.1, rotate: 90 }}
                                 whileTap={{ scale: 0.9 }}
                             >
-                                <FaTimes size={20} />
+                                <FaTimes size={18} />
                             </motion.button>
 
-                            <div className="flex flex-col md:flex-row gap-8">
+                            {/* ✨ CHANGED: 3-Column Layout Container */}
+                            <div className="flex flex-col md:flex-row gap-6 flex-grow overflow-hidden">
+                                {/* COLUMN 1: Profile Information */}
                                 <motion.div
-                                    className="flex flex-col items-center flex-shrink-0 md:w-1/3"
+                                    className="flex flex-col items-center flex-shrink-0 md:w-1/4 overflow-y-auto custom-scrollbar pb-4"
                                     initial={{ x: -20, opacity: 0 }}
                                     animate={{ x: 0, opacity: 1 }}
                                     transition={{ delay: 0.1 }}
                                 >
-                                    {/* ✨ NEW: Hidden file input */}
                                     <input
                                         type="file"
                                         accept="image/*"
@@ -843,7 +868,6 @@ const LeftSidebar = ({
                                         onChange={handleAvatarUpload}
                                     />
 
-                                    {/* ✨ UPDATED: Interactive Avatar Container */}
                                     <div
                                         className="relative w-32 h-32 rounded-2xl overflow-hidden border border-gray-200 shadow-lg mb-4 cursor-pointer group"
                                         onClick={() =>
@@ -856,8 +880,6 @@ const LeftSidebar = ({
                                             alt="Current Avatar"
                                             className={`w-full h-full object-cover transition-opacity duration-300 ${isUploadingAvatar ? "opacity-50 blur-sm" : "group-hover:opacity-70"}`}
                                         />
-
-                                        {/* Hover Overlay */}
                                         <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                             <FaCamera
                                                 className="text-white mb-1"
@@ -867,8 +889,6 @@ const LeftSidebar = ({
                                                 Change
                                             </span>
                                         </div>
-
-                                        {/* Loading Spinner during upload */}
                                         {isUploadingAvatar && (
                                             <div className="absolute inset-0 flex items-center justify-center bg-white/30 backdrop-blur-sm">
                                                 <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -894,10 +914,12 @@ const LeftSidebar = ({
                                     </div>
                                 </motion.div>
 
+                                {/* COLUMN 2: Performance Analytics */}
                                 <motion.div
-                                    className="flex-grow flex flex-col"
-                                    initial={{ x: 20, opacity: 0 }}
-                                    animate={{ x: 0, opacity: 1 }}
+                                    // ✨ CHANGED: Added overflow-x-hidden right here
+                                    className="flex-grow flex flex-col md:w-2/5 overflow-y-auto overflow-x-hidden custom-scrollbar pr-2 pb-4"
+                                    initial={{ y: 20, opacity: 0 }}
+                                    animate={{ y: 0, opacity: 1 }}
                                     transition={{ delay: 0.2 }}
                                 >
                                     <h3 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2">
@@ -971,7 +993,6 @@ const LeftSidebar = ({
                                                                 dateStr
                                                             ] || 0;
 
-                                                        // Max height calc
                                                         const maxCount =
                                                             Math.max(
                                                                 ...Object.values(
@@ -1014,7 +1035,6 @@ const LeftSidebar = ({
                                                                         height: `${heightPercent}%`,
                                                                     }}
                                                                 ></div>
-                                                                {/* Tooltip */}
                                                                 <div className="opacity-0 group-hover:opacity-100 absolute -top-8 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10 pointer-events-none transition-opacity">
                                                                     {count}{" "}
                                                                     tasks on{" "}
@@ -1038,19 +1058,105 @@ const LeftSidebar = ({
                                         </div>
                                     )}
                                 </motion.div>
+
+                                {/* ✨ NEW COLUMN 3: Pending Tasks */}
+                                <motion.div
+                                    className="flex flex-col md:w-[35%] bg-gray-50/50 border border-gray-200 rounded-xl overflow-hidden shadow-sm flex-shrink-0"
+                                    initial={{ x: 20, opacity: 0 }}
+                                    animate={{ x: 0, opacity: 1 }}
+                                    transition={{ delay: 0.3 }}
+                                >
+                                    <div className="px-5 py-4 border-b border-gray-200 bg-white shadow-sm z-10">
+                                        <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                                            <FaTasks className="text-blue-500" />{" "}
+                                            Pending Tasks
+                                        </h3>
+                                        <p className="text-xs text-red-500 font-semibold mt-0.5">
+                                            Universal Workload
+                                        </p>
+                                    </div>
+
+                                    <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                                        {isLoadingTasks ? (
+                                            <div className="flex items-center justify-center h-full">
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                                            </div>
+                                        ) : Object.keys(groupedUserTasks)
+                                              .length === 0 ? (
+                                            <div className="flex flex-col items-center justify-center h-full text-green-500 py-10">
+                                                <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mb-3 shadow-inner">
+                                                    <FaRegLightbulb size={20} />
+                                                </div>
+                                                <p className="text-sm font-bold text-center">
+                                                    Awesome! No pending tasks.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                {Object.entries(
+                                                    groupedUserTasks,
+                                                ).map(
+                                                    ([projectName, tasks]) => (
+                                                        <div
+                                                            key={projectName}
+                                                            className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm"
+                                                        >
+                                                            <div className="bg-gray-100 px-3 py-2 border-b border-gray-200">
+                                                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                                                                    Project:{" "}
+                                                                    <span className="text-gray-800">
+                                                                        {
+                                                                            projectName
+                                                                        }
+                                                                    </span>
+                                                                </span>
+                                                            </div>
+                                                            <ul className="divide-y divide-gray-50">
+                                                                {tasks.map(
+                                                                    (
+                                                                        task,
+                                                                        idx,
+                                                                    ) => (
+                                                                        <li
+                                                                            key={
+                                                                                idx
+                                                                            }
+                                                                            className="p-3 flex items-start justify-between hover:bg-gray-50 transition-colors gap-2"
+                                                                        >
+                                                                            <span className="text-xs font-medium text-gray-700 leading-snug">
+                                                                                {
+                                                                                    task.task
+                                                                                }
+                                                                            </span>
+                                                                            <span className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded bg-amber-100 text-amber-700 border border-amber-200 whitespace-nowrap mt-0.5">
+                                                                                {task.status ||
+                                                                                    "Pending"}
+                                                                            </span>
+                                                                        </li>
+                                                                    ),
+                                                                )}
+                                                            </ul>
+                                                        </div>
+                                                    ),
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </motion.div>
                             </div>
 
+                            {/* Footer Close Button */}
                             <motion.div
-                                className="flex justify-end mt-6 pt-4 border-t"
+                                className="flex justify-end mt-4 pt-4 border-t flex-shrink-0"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
-                                transition={{ delay: 0.3 }}
+                                transition={{ delay: 0.4 }}
                             >
                                 <motion.button
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
                                     onClick={() => setIsProfileModalOpen(false)}
-                                    className="bg-gray-800 text-white px-8 py-2.5 rounded-xl hover:bg-gray-900 transition-colors shadow-lg font-medium"
+                                    className="bg-gray-800 text-white px-8 py-2.5 rounded-xl hover:bg-gray-900 transition-colors shadow-lg font-medium text-sm"
                                 >
                                     Close Profile
                                 </motion.button>
