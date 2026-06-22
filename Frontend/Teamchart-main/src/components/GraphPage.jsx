@@ -5,6 +5,7 @@ import React, {
     useRef,
     useMemo,
 } from "react";
+import Avatar from "boring-avatars";
 import { useViewport } from "reactflow";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
@@ -116,19 +117,33 @@ const Content = ({ selectedProjectId, projectName }) => {
         return colors[Math.floor(Math.random() * colors.length)];
     });
 
-    // 1. Establish WebSocket Connection
+    // ✨ NEW: Combine local user and remote users into one active list
+    const activeUsers = useMemo(() => {
+        const localUser = {
+            username: localStorage.getItem("username"),
+            avatarUrl: localStorage.getItem("customAvatar"),
+            color: myCursorColor,
+        };
+
+        const remoteUsers = Object.values(cursors).filter(
+            (u) => u.username !== localUser.username,
+        );
+
+        return [localUser, ...remoteUsers];
+    }, [cursors, myCursorColor]);
+
+    // 1. Establish WebSocket Connection & Handle "Leave" Signals
     useEffect(() => {
         if (!selectedProjectId) return;
 
-        // ✨ CHANGED: Use your environment variable, or hardcode your Render URL!
-        // (Make sure you use your ACTUAL Render URL here if you don't have an env variable setup)
-        const BACKEND_URL = process.env.REACT_APP_API_URL;
-
+        const BACKEND_URL =
+            process.env.REACT_APP_API_URL ||
+            "https://your-backend-name.onrender.com"; // Use your actual URL
         const socket = new SockJS(`${BACKEND_URL}/ws`);
+
         const client = new Client({
             webSocketFactory: () => socket,
             onConnect: () => {
-                // Subscribe to this specific project's cursor movements
                 client.subscribe(
                     `/topic/cursors/${selectedProjectId}`,
                     (message) => {
@@ -136,12 +151,24 @@ const Content = ({ selectedProjectId, projectName }) => {
                         const currentUsername =
                             localStorage.getItem("username");
 
-                        // Don't render our own cursor
                         if (data.username !== currentUsername) {
-                            setCursors((prev) => ({
-                                ...prev,
-                                [data.username]: data,
-                            }));
+                            // ✨ NEW: If the user left, delete them from the state
+                            if (data.type === "LEAVE") {
+                                setCursors((prev) => {
+                                    const newCursors = { ...prev };
+                                    delete newCursors[data.username];
+                                    return newCursors;
+                                });
+                            } else {
+                                // Otherwise, update their position and add a timestamp for the garbage collector
+                                setCursors((prev) => ({
+                                    ...prev,
+                                    [data.username]: {
+                                        ...data,
+                                        lastUpdate: Date.now(),
+                                    },
+                                }));
+                            }
                         }
                     },
                 );
@@ -151,7 +178,20 @@ const Content = ({ selectedProjectId, projectName }) => {
         client.activate();
         stompClient.current = client;
 
-        return () => client.deactivate(); // Cleanup on unmount or project change
+        // ✨ NEW: Cleanup function when user switches projects or unmounts
+        return () => {
+            if (client.connected) {
+                // Broadcast that this user is leaving before severing the connection
+                client.publish({
+                    destination: `/app/cursor.move/${selectedProjectId}`,
+                    body: JSON.stringify({
+                        username: localStorage.getItem("username"),
+                        type: "LEAVE",
+                    }),
+                });
+            }
+            client.deactivate();
+        };
     }, [selectedProjectId]);
 
     // 2. Capture and Broadcast Mouse Movement
@@ -177,6 +217,8 @@ const Content = ({ selectedProjectId, projectName }) => {
                     x: position.x,
                     y: position.y,
                     color: myCursorColor,
+                    avatarUrl: localStorage.getItem("customAvatar") || "",
+                    type: "MOVE", // ✨ ADDED THIS LINE
                 }),
             });
         },
@@ -206,6 +248,29 @@ const Content = ({ selectedProjectId, projectName }) => {
             window.location.href = "/"; // Redirects to your login page (change to "/login" if needed)
         }
     };
+
+    // ✨ NEW: The Garbage Collector (Removes ghost cursors after 10 seconds of inactivity)
+    useEffect(() => {
+        const sweepInterval = setInterval(() => {
+            const now = Date.now();
+            setCursors((prev) => {
+                let hasChanges = false;
+                const activeCursors = { ...prev };
+
+                for (const username in activeCursors) {
+                    // If we haven't received a signal from this user in 10 seconds, remove them
+                    if (now - activeCursors[username].lastUpdate > 10000) {
+                        delete activeCursors[username];
+                        hasChanges = true;
+                    }
+                }
+
+                return hasChanges ? activeCursors : prev;
+            });
+        }, 5000); // Check every 5 seconds
+
+        return () => clearInterval(sweepInterval);
+    }, []);
 
     // ✨ NEW: The Autosave Engine
     useEffect(() => {
@@ -851,9 +916,10 @@ const Content = ({ selectedProjectId, projectName }) => {
                     >
                         <FaLocationArrow
                             size={16}
+                            // ✨ CHANGED: -45deg is now -90deg
                             style={{
                                 color: cursor.color,
-                                transform: "rotate(-45deg)",
+                                transform: "rotate(-80deg)",
                                 filter: "drop-shadow(0px 2px 2px rgba(0,0,0,0.2))",
                             }}
                         />
@@ -905,7 +971,7 @@ const Content = ({ selectedProjectId, projectName }) => {
                 {/* ✨ UNIFIED TOP-LEFT CONTROL PILL ✨ */}
                 <Panel
                     position="top-left"
-                    className="mt-5 ml-5 bg-white/80 backdrop-blur-md p-1.5 pr-5 rounded-xl shadow-sm border border-gray-200 flex items-center gap-3"
+                    className="mt-5 ml-5 bg-white/80 backdrop-blur-md p-1.5 pr-4 rounded-xl shadow-sm border border-gray-200 flex items-center gap-3"
                 >
                     {/* 1. Integrated Left Sidebar Toggle */}
                     <motion.button
@@ -933,14 +999,58 @@ const Content = ({ selectedProjectId, projectName }) => {
                                 className={`relative inline-flex rounded-full h-2.5 w-2.5 ${selectedProjectId ? "bg-blue-500" : "bg-gray-400"}`}
                             ></span>
                         </div>
-
-                        {/* CHANGED: Removed 'uppercase' and 'tracking-wider' to keep natural casing! */}
-                        <div className="text-sm font-semibold text-gray-700 mt-0.5">
+                        <div className="text-sm font-semibold text-gray-700 mt-0.5 whitespace-nowrap">
                             {selectedProjectId
                                 ? projectName || "Unnamed Project"
                                 : "No Project Selected"}
                         </div>
                     </div>
+
+                    {/* ✨ NEW: 4. Active Users Stack */}
+                    {selectedProjectId && activeUsers.length > 0 && (
+                        <>
+                            <div className="w-[1px] h-5 bg-gray-200 ml-1"></div>
+                            <div className="flex items-center -space-x-2 pl-1">
+                                {activeUsers.map((user, index) => (
+                                    <div
+                                        key={user.username}
+                                        className="relative group z-10 hover:z-20 transition-all hover:-translate-y-1"
+                                        title={`${user.username} is viewing this project`}
+                                    >
+                                        {/* Avatar Circle */}
+                                        <div
+                                            className="w-8 h-8 rounded-full border-2 border-white overflow-hidden bg-gray-100 shadow-sm flex-shrink-0"
+                                            style={{ borderColor: "white" }} // Ensures clean cutout between overlapping circles
+                                        >
+                                            {user.avatarUrl ? (
+                                                <img
+                                                    src={user.avatarUrl}
+                                                    alt={user.username}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <Avatar
+                                                    size={28}
+                                                    name={user.username}
+                                                    variant="beam"
+                                                    colors={[
+                                                        "#f77272",
+                                                        "#fabd23",
+                                                        "#49de80",
+                                                        "#3b82f6",
+                                                        "#c083fc",
+                                                    ]}
+                                                />
+                                            )}
+                                        </div>
+
+                                        {/* Green Online Dot */}
+                                        <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></div>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
                 </Panel>
 
                 {/* ✨ TOP-RIGHT GLOBAL ACTIONS ✨ */}

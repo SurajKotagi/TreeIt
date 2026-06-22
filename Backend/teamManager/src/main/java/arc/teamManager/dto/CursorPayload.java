@@ -5,6 +5,8 @@ public class CursorPayload {
     private double x;
     private double y;
     private String color;
+    private String avatarUrl; // ✨ NEW
+    private String type; // ✨ NEW: "MOVE" or "LEAVE"
 
     public String getUsername() {
         return username;
@@ -38,4 +40,19 @@ public class CursorPayload {
         this.color = color;
     }
 
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
 }
